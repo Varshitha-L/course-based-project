@@ -1,13 +1,129 @@
-{
-  "name": "app-monitor-backend",
-  "version": "1.0.0",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^7.0.0",
-    "cors": "^2.8.5"
+// server.js
+import express from 'express';
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
+import cors from 'cors';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// SQLite connection
+const db = await open({
+  filename: './balance.db',
+  driver: sqlite3.Database
+});
+
+// Create tables
+await db.exec(`
+CREATE TABLE IF NOT EXISTS sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER DEFAULT 1,
+  started_at TEXT NOT NULL,
+  ended_at TEXT NOT NULL,
+  device TEXT,
+  notes TEXT
+);
+
+CREATE TABLE IF NOT EXISTS reminder_prefs (
+  user_id INTEGER PRIMARY KEY,
+  interval_minutes INTEGER DEFAULT 20,
+  active INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS daily_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER DEFAULT 1,
+  day TEXT NOT NULL UNIQUE,
+  total_minutes INTEGER,
+  average_session_minutes REAL,
+  longest_session_minutes INTEGER,
+  shortest_session_minutes INTEGER,
+  sessions_count INTEGER,
+  feedback TEXT
+);
+`);
+
+// Save a session
+app.post('/api/sessions', async (req, res) => {
+  const { startedAt, endedAt, device, notes } = req.body;
+  if (!startedAt || !endedAt) {
+    return res.json({ error: 'Start and end times are required.' });
   }
-}
+  await db.run(
+    `INSERT INTO sessions (started_at, ended_at, device, notes) VALUES (?,?,?,?)`,
+    [startedAt, endedAt, device, notes]
+  );
+  const durationMinutes = Math.round((new Date(endedAt) - new Date(startedAt)) / 60000);
+  res.json({ message: 'Session saved', durationMinutes });
+});
+
+// Get sessions
+app.get('/api/sessions', async (req, res) => {
+  const { day } = req.query;
+  const rows = day
+    ? await db.all(`SELECT * FROM sessions WHERE date(started_at)=? ORDER BY started_at`, [day])
+    : await db.all(`SELECT * FROM sessions ORDER BY started_at DESC`);
+  res.json(rows);
+});
+
+// Daily report
+app.post('/api/reports/daily', async (req, res) => {
+  const { day } = req.body;
+  if (!day) return res.json({ error: 'Day (YYYY-MM-DD) is required.' });
+
+  const rows = await db.all(
+    `SELECT (julianday(ended_at)-julianday(started_at))*24*60 AS duration
+     FROM sessions WHERE date(started_at)=?`,
+    [day]
+  );
+  const durations = rows.map(r => Math.max(0, Math.round(r.duration || 0)));
+  const total = durations.reduce((a, b) => a + b, 0);
+  const avg = durations.length ? total / durations.length : 0;
+  const longest = durations.length ? Math.max(...durations) : 0;
+  const shortest = durations.length ? Math.min(...durations) : 0;
+  const feedback = total < 60 ? 'Great balance today!' :
+                   total <= 180 ? 'Healthy range, keep breaks!' :
+                   'High usage, take more breaks.';
+
+  await db.run(`
+    INSERT INTO daily_reports
+      (user_id, day, total_minutes, average_session_minutes,
+       longest_session_minutes, shortest_session_minutes, sessions_count, feedback)
+    VALUES (1,?,?,?,?,?,?,?)
+    ON CONFLICT(day) DO UPDATE SET
+      total_minutes=excluded.total_minutes,
+      average_session_minutes=excluded.average_session_minutes,
+      longest_session_minutes=excluded.longest_session_minutes,
+      shortest_session_minutes=excluded.shortest_session_minutes,
+      sessions_count=excluded.sessions_count,
+      feedback=excluded.feedback
+  `, [day, total, avg, longest, shortest, durations.length, feedback]);
+
+  res.json({
+    day, total, avg: Math.round(avg), longest, shortest,
+    count: durations.length, feedback
+  });
+});
+
+// Reminder prefs
+app.get('/api/reminders', async (req, res) => {
+  const prefs = await db.get(`SELECT * FROM reminder_prefs WHERE user_id=1`);
+  res.json(prefs || { user_id: 1, interval_minutes: 20, active: 1 });
+});
+
+app.put('/api/reminders', async (req, res) => {
+  const { intervalMinutes, active } = req.body;
+  await db.run(`
+    INSERT INTO reminder_prefs (user_id, interval_minutes, active)
+    VALUES (1, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET
+      interval_minutes=excluded.interval_minutes,
+      active=excluded.active
+  `, [intervalMinutes, active ? 1 : 0]);
+  res.json({ ok: true });
+});
+
+app.listen(3000, () => {
+  console.log('Backend running on http://localhost:3000');
+});

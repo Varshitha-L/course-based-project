@@ -1,0 +1,299 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Tech–Life Balance Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <h1>✨ Tech–Life Balance Panel</h1>
+    <ul>
+      <li><a href="#sessions">Sessions</a></li>
+      <li><a href="#report">Reports</a></li>
+      <li><a href="#analytics">Analytics</a></li>
+      <li><a href="#settings">Settings</a></li>
+    </ul>
+    <button id="toggleTheme" class="theme-toggle">🌙 Dark Mode</button>
+  </nav>
+
+  <main>
+    <!-- Session logging -->
+    <section id="sessions" class="card">
+      <h2>Log a Session</h2>
+      <div class="form-grid">
+        <div>
+          <label>Start time</label>
+          <input type="datetime-local" id="start" />
+        </div>
+        <div>
+          <label>End time</label>
+          <input type="datetime-local" id="end" />
+        </div>
+        <div>
+          <label>Device</label>
+          <select id="device">
+            <option>Web</option>
+            <option>Mobile</option>
+            <option>Desktop</option>
+          </select>
+        </div>
+        <div>
+          <label>Notes</label>
+          <input id="notes" placeholder="Optional context" />
+        </div>
+      </div>
+      <button id="save" class="btn primary">💾 Save Session</button>
+      <p id="saveMsg" class="status"></p>
+    </section>
+
+    <!-- Reminder settings -->
+    <section id="settings" class="card">
+      <h2>Reminder Settings</h2>
+      <div class="form-grid">
+        <div>
+          <label>Interval (minutes)</label>
+          <input type="number" id="interval" min="5" value="20" />
+        </div>
+        <div>
+          <label>Active</label>
+          <select id="active">
+            <option value="1">On</option>
+            <option value="0">Off</option>
+          </select>
+        </div>
+      </div>
+      <button id="updateReminders" class="btn secondary">🔔 Update</button>
+      <p id="reminderMsg" class="status"></p>
+    </section>
+
+    <!-- Daily report -->
+    <section id="report" class="card">
+      <h2>Daily Report</h2>
+      <div class="form-inline">
+        <label>Day</label>
+        <input type="date" id="day" />
+        <button id="compute" class="btn success">📊 Compute Report</button>
+        <button id="exportCSV" class="btn primary">📂 Export CSV</button>
+        <button id="exportJSON" class="btn secondary">📂 Export JSON</button>
+      </div>
+      <pre id="reportText"></pre>
+      <div class="progress-container">
+        <div id="goalProgress" class="progress-bar"></div>
+      </div>
+      <canvas id="chart" height="120"></canvas>
+    </section>
+
+    <!-- Sessions list -->
+    <section class="card">
+      <h2>Sessions</h2>
+      <button id="refreshSessions" class="btn danger">🔄 Refresh</button>
+      <ul id="sessionsList"></ul>
+    </section>
+
+    <!-- Analytics Dashboard -->
+    <section id="analytics" class="card">
+      <h2>Analytics Dashboard</h2>
+      <div class="chart-row">
+        <div class="chart-box wide">
+          <canvas id="weeklyChart"></canvas>
+        </div>
+        <div class="chart-box small">
+          <canvas id="deviceChart"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>💡 Balance your tech, balance your life.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Dark mode persistence
+    const toggleBtn = document.getElementById('toggleTheme');
+    if (localStorage.getItem('theme') === 'dark') {
+      document.body.classList.add('dark');
+      toggleBtn.textContent = '☀️ Light Mode';
+    }
+    toggleBtn.onclick = () => {
+      document.body.classList.toggle('dark');
+      const isDark = document.body.classList.contains('dark');
+      toggleBtn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    };
+
+    // Notifications
+    if (Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+    function showUsageReminder() {
+      if (Notification.permission === 'granted') {
+        new Notification("⏰ Time for a 5‑minute stretch!", {
+          body: "Take a quick break to refresh your mind."
+        });
+      }
+    }
+    let reminderTimer;
+
+    // API helper
+    const api = (path, opts = {}) =>
+      fetch('http://localhost:3000' + path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts
+      }).then(r => r.json());
+
+    // Save session
+    document.getElementById('save').onclick = async () => {
+      const startedAt = document.getElementById('start').value;
+      const endedAt   = document.getElementById('end').value;
+      const device    = document.getElementById('device').value;
+      const notes     = document.getElementById('notes').value;
+      const res = await api('/api/sessions', {
+        method: 'POST',
+        body: JSON.stringify({ startedAt, endedAt, device, notes })
+      });
+      document.getElementById('saveMsg').textContent =
+        res.error || `✅ Saved. Duration: ${res.durationMinutes} min`;
+    };
+
+    // Update reminders
+    document.getElementById('updateReminders').onclick = async () => {
+      const intervalMinutes = parseInt(document.getElementById('interval').value, 10);
+      const active = document.getElementById('active').value === '1';
+      const res = await api('/api/reminders', {
+        method: 'PUT',
+        body: JSON.stringify({ intervalMinutes, active })
+      });
+      document.getElementById('reminderMsg').textContent =
+        res.ok ? '✅ Updated' : '❌ Error';
+
+      if (reminderTimer) clearInterval(reminderTimer);
+      if (active) {
+        reminderTimer = setInterval(showUsageReminder, intervalMinutes * 60 * 1000);
+      }
+    };
+
+    // Compute daily report
+    document.getElementById('compute').onclick = async () => {
+      const day = document.getElementById('day').value;
+      const report = await api('/api/reports/daily', {
+        method: 'POST',
+        body: JSON.stringify({ day })
+      });
+      document.getElementById('reportText').textContent =
+        JSON.stringify(report, null, 2);
+
+      // Progress bar vs fixed daily goal (180 min)
+      const goal = 180;
+      const percent = Math.min((report.total / goal) * 100, 100);
+      const bar = document.getElementById('goalProgress');
+      bar.style.width = percent + '%';
+      bar.style.background = report.total <= goal ? 'linear-gradient(90deg,#76b7b2,#59a39d)' : 'linear-gradient(90deg,#e15759,#c34c4c)';
+
+      // Sessions chart for selected day
+      const sessions = await api('/api/sessions?day=' + day);
+      const durations = sessions.map(
+        s => Math.max(0, Math.round((new Date(s.ended_at) - new Date(s.started_at)) / 60000))
+      );
+      const labels = sessions.map(
+        s => new Date(s.started_at).toLocaleTimeString()
+      );
+      renderDayChart(labels, durations);
+    };
+
+    // Refresh sessions list
+    document.getElementById('refreshSessions').onclick = async () => {
+      const day = document.getElementById('day').value;
+      const sessions = await api('/api/sessions' + (day ? ('?day=' + day) : ''));
+      const ul = document.getElementById('sessionsList');
+      ul.innerHTML = '';
+      sessions.forEach(s => {
+        const li = document.createElement('li');
+        li.textContent =
+          `${new Date(s.started_at).toLocaleString()} — ${new Date(s.ended_at).toLocaleString()} (${s.device})`;
+        ul.appendChild(li);
+      });
+    };
+
+    // Charts
+    let dayChart;
+    function renderDayChart(labels, data) {
+      const ctx = document.getElementById('chart');
+      if (dayChart) dayChart.destroy();
+      dayChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Session duration (min)',
+            data,
+            backgroundColor: '#4e79a7'
+          }]
+        },
+        options: {
+          scales: { y: { beginAtZero: true } },
+          plugins: { legend: { display: true } }
+        }
+      });
+    }
+
+    // Weekly usage (real data from backend)
+    const weeklyCtx = document.getElementById('weeklyChart');
+    const weeklyChart = new Chart(weeklyCtx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Daily Usage (min)', data: [], borderColor: '#4e79a7', fill: false }] },
+      options: { scales: { y: { beginAtZero: true } } }
+    });
+    async function loadWeekly() {
+      const rows = await api('/api/analytics/weekly');
+      const weekdayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      weeklyChart.data.labels = rows.map(r => weekdayNames[r.weekday]);
+      weeklyChart.data.datasets[0].data = rows.map(r => r.total);
+      weeklyChart.update();
+    }
+    loadWeekly();
+
+    // Device breakdown (real data, small pie)
+    const deviceCtx = document.getElementById('deviceChart');
+    const deviceChart = new Chart(deviceCtx, {
+      type: 'pie',
+      data: { labels: [], datasets: [{ data: [], backgroundColor: ['#4e79a7','#f28e2b','#76b7b2','#e15759'] }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+    async function loadDevice() {
+      const rows = await api('/api/analytics/device');
+      deviceChart.data.labels = rows.map(r => r.device || 'Unknown');
+      deviceChart.data.datasets[0].data = rows.map(r => r.count);
+      deviceChart.update();
+    }
+    loadDevice();
+
+    // Export CSV/JSON of current daily report
+    document.getElementById('exportCSV').onclick = async () => {
+      const day = document.getElementById('day').value;
+      if (!day) return alert('Pick a day first.');
+      const report = await api('/api/reports/daily', { method: 'POST', body: JSON.stringify({ day }) });
+      const csv = `Day,Total,Average,Longest,Shortest,Count,Feedback\n${report.day},${report.total},${report.avg},${report.longest},${report.shortest},${report.count},"${report.feedback}"`;
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `report-${day}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    document.getElementById('exportJSON').onclick = async () => {
+      const day = document.getElementById('day').value;
+      if (!day) return alert('Pick a day first.');
+      const report = await api('/api/reports/daily', { method: 'POST', body: JSON.stringify({ day }) });
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `report-${day}.json`; a.click();
+      URL.revokeObjectURL(url);
+    };
+  </script>
+</body>
+</html>

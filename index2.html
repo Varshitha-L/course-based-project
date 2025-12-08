@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Digital Wellness — Full Feature Dashboard</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa7bf; --accent:#06b6d4; --accent-2:#7c3aed;
+      --radius:12px; --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(7,11,21,0.6), transparent),
+                  radial-gradient(900px 500px at 90% 90%, rgba(8,15,30,0.5), transparent),
+                  var(--bg);
+      color:#e6eef8; padding:20px;
+    }
+
+    .container{max-width:1200px;margin:0 auto}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(90deg,var(--accent-2),var(--accent));display:grid;place-items:center;font-weight:800}
+    nav{display:flex;gap:12px;align-items:center}
+    nav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:14px}
+
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px;align-items:start}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:16px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.04); box-shadow:0 8px 30px rgba(2,6,23,0.6);}
+    h2{margin:0 0 8px 0}
+    .muted{color:var(--muted);font-size:13px}
+
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input[type="number"], input[type="text"], select, textarea { padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06); background:transparent; color:inherit; min-width:120px; }
+    input[type="range"]{width:160px}
+    button{padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent),#10b981);color:#fff;font-weight:700;cursor:pointer}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .small{padding:6px 8px;font-size:13px}
+
+    .chart-wrap{margin-top:12px;background:var(--card);padding:12px;border-radius:10px}
+    canvas{width:100% !important;height:220px !important}
+
+    .ring{width:88px;height:88px;border-radius:999px;display:grid;place-items:center;font-weight:800;font-size:16px;box-shadow:inset 0 -8px 22px rgba(0,0,0,0.45)}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:left}
+    .badge{display:inline-block;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.04);font-weight:700;margin-right:6px}
+
+    .flex-col{display:flex;flex-direction:column;gap:8px}
+    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+
+    /* Accessibility focus */
+    :focus { outline: 3px solid rgba(6,182,212,0.25); outline-offset: 2px; }
+
+    @media (max-width:980px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="container" role="application" aria-label="Digital Wellness Dashboard">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">DW</div>
+        <div>
+          <div style="font-weight:800">Digital Wellness</div>
+          <div class="muted">Focus, track, and reclaim time</div>
+        </div>
+      </div>
+
+      <nav aria-label="Main navigation">
+        <a href="#" class="small">Dashboard</a>
+        <a href="#" class="small">Tracker</a>
+        <a href="#" class="small">Insights</a>
+        <button id="openApp" class="small" aria-label="Open app">Open App</button>
+        <select id="themeSwitcher" aria-label="Theme switcher" title="Theme">
+          <option value="bg-night">Night</option>
+          <option value="bg-sunrise">Sunrise</option>
+          <option value="bg-ocean">Ocean</option>
+          <option value="bg-forest">Forest</option>
+          <option value="bg-bright">Bright</option>
+        </select>
+      </nav>
+    </header>
+
+    <main class="grid">
+      <!-- Left column -->
+      <section class="card" aria-labelledby="pomodoroTitle">
+        <h2 id="pomodoroTitle">Pomodoro & Session Logger</h2>
+        <div class="muted">Name sessions, choose tags, set custom cycles, and run automated Pomodoro variants.</div>
+
+        <div style="margin-top:12px" class="row" role="form" aria-label="Session form">
+          <input type="text" id="sessionTitle" placeholder="Session title (e.g., DSA practice)" aria-label="Session title" />
+          <input type="text" id="sessionTags" placeholder="Tags (comma separated)" aria-label="Session tags" />
+          <label class="muted">Cycle</label>
+          <select id="cyclePreset" aria-label="Cycle preset">
+            <option value="classic">Classic 25/5</option>
+            <option value="short">Short 15/3</option>
+            <option value="long">Deep 50/10</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input type="number" id="focusMinutes" value="25" min="1" aria-label="Focus minutes" style="width:90px" />
+          <div class="muted">focus mins</div>
+          <input type="number" id="breakMinutes" value="5" min="1" aria-label="Break minutes" style="width:90px" />
+          <div class="muted">break mins</div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button id="startCycle">Start Cycle</button>
+          <button id="pauseCycle" class="btn-ghost">Pause</button>
+          <button id="stopCycle" class="btn-ghost">Stop</button>
+          <button id="skipToBreak" class="btn-ghost">Skip to Break</button>
+          <label class="muted" style="margin-left:auto">Auto-pause on blur</label>
+          <input type="checkbox" id="autoPause" checked aria-label="Auto pause on blur" />
+        </div>
+
+        <div style="margin-top:14px" class="row">
+          <div style="flex:1">
+            <div id="timerPhase" style="font-weight:800">Stopped</div>
+            <div id="timerDisplay" style="font-size:36px;font-weight:800">00:00</div>
+            <div class="muted">Keyboard: Space to start/pause, S to stop</div>
+          </div>
+
+          <div style="width:180px;text-align:center">
+            <div class="muted">Today</div>
+            <div id="todayUsage" style="font-weight:800;font-size:18px">0h 0m</div>
+            <div style="margin-top:8px">
+              <button id="quickLog5" class="btn-ghost small">+5m</button>
+              <button id="quickLog15" class="btn-ghost small">+15m</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-wrap" aria-hidden="false" style="margin-top:12px">
+          <canvas id="weekChart" role="img" aria-label="Weekly usage chart"></canvas>
+        </div>
+
+        <div style="margin-top:12px" class="row">
+          <label class="muted">Daily Goal</label>
+          <input type="range" id="goalSlider" min="60" max="480" step="15" aria-label="Daily goal slider" />
+          <div id="goalLabel" class="badge" aria-live="polite"></div>
+          <div style="flex:1"></div>
+          <button id="exportCSV" class="small btn-ghost">Export CSV</button>
+          <button id="exportJSON" class="small btn-ghost">Export JSON</button>
+          <button id="scheduledExport" class="small btn-ghost">Schedule Export</button>
+        </div>
+
+        <div style="margin-top:12px" class="muted">Analytics & Insights</div>
+        <div id="analytics" style="margin-top:8px" class="muted" aria-live="polite"></div>
+
+        <div style="margin-top:12px">
+          <h3 class="muted">Tag breakdown</h3>
+          <canvas id="tagChart" aria-label="Tag breakdown chart"></canvas>
+        </div>
+      </section>
+
+      <!-- Right column -->
+      <aside class="card flex-col" aria-labelledby="progressTitle">
+        <div>
+          <h3 id="progressTitle" style="margin:0">Progress</h3>
+          <div class="row" style="margin-top:10px;align-items:center">
+            <div class="ring" id="progressRing" aria-hidden="false">0%</div>
+            <div style="flex:1">
+              <div class="muted">Goal progress</div>
+              <div id="progressMeta" style="font-weight:800">0 / 0 mins</div>
+              <div style="margin-top:8px" id="badgesArea" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <h3 style="margin:0">Session Log</h3>
+          <div class="row" style="margin-top:8px">
+            <input type="text" id="filterText" placeholder="Search title or tag" aria-label="Search sessions" />
+            <select id="filterTag" aria-label="Filter by tag"><option value="">All tags</option></select>
+            <input type="date" id="filterFrom" aria-label="From date" />
+            <input type="date" id="filterTo" aria-label="To date" />
+            <button id="applyFilter" class="small btn-ghost">Apply</button>
+            <button id="clearFilter" class="small btn-ghost">Clear</button>
+          </div>
+
+          <table aria-live="polite" aria-label="Session log table">
+            <thead><tr><th>Title</th><th>Tags</th><th>Minutes</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody id="sessionTable"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:12px">
+          <h3 style="margin:0">Break Tip</h3>
+          <div id="breakTip" class="muted" style="margin-top:8px">Take a short walk, stretch, or breathe deeply.</div>
+          <div style="margin-top:8px" class="muted">Ambient: 
+            <select id="ambientSelect" aria-label="Ambient audio">
+              <option value="">None</option>
+              <option value="rain">Rain</option>
+              <option value="waves">Waves</option>
+              <option value="focus">Soft hum</option>
+              <option value="upload">Upload audio</option>
+            </select>
+          </div>
+          <div class="audio-controls" style="margin-top:8px">
+            <button id="playAmbient" class="small">Play</button>
+            <button id="pauseAmbient" class="small btn-ghost">Pause</button>
+            <label class="muted">Volume</label>
+            <input type="range" id="ambientVolume" min="0" max="1" step="0.01" value="0.6" />
+            <label class="muted">Duck on notification</label>
+            <input type="checkbox" id="duckOnNotify" checked />
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <h3 style="margin:0">Settings & Reminders</h3>
+          <div class="muted" style="margin-top:8px">Quiet hours (no notifications / audio)</div>
+          <div class="row" style="margin-top:8px">
+            <input type="time" id="quietFrom" aria-label="Quiet from" />
+            <input type="time" id="quietTo" aria-label="Quiet to" />
+            <label class="muted">Daily reminder</label>
+            <input type="time" id="dailyReminder" aria-label="Daily reminder" />
+            <button id="saveSettings" class="small">Save</button>
+          </div>
+
+          <div style="margin-top:8px" class="muted">Privacy & Data</div>
+          <div class="row" style="margin-top:8px">
+            <button id="exportAll" class="small btn-ghost">Export All</button>
+            <button id="deleteAll" class="small btn-ghost">Delete All</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <h3 style="margin:0">Integrations</h3>
+          <div class="muted" style="margin-top:8px">Google Calendar sync and webhooks (placeholders)</div>
+          <div class="row" style="margin-top:8px">
+            <button id="authorizeGoogle" class="small">Authorize Google</button>
+            <button id="syncToCalendar" class="small btn-ghost">Sync Selected</button>
+            <input type="text" id="webhookUrl" placeholder="Webhook URL" style="min-width:160px" />
+            <button id="sendWebhook" class="small btn-ghost">Send</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer>© Digital Wellness · Built for focus</footer>
+  </div>
+
+  <!-- Hidden file input for ambient upload -->
+  <input type="file" id="ambientUpload" accept="audio/*" style="display:none" />
+
+  <script>
+  /************************************************************************
+   * Full-feature dashboard script
+   * - Implements session CRUD, tags, charts, analytics, badges, streaks
+   * - Ambient audio with per-phase selection, ducking, crossfade
+   * - Pomodoro variants, auto-pause on blur, keyboard shortcuts
+   * - Notifications, quiet hours, scheduled reminders
+   * - Export CSV/JSON, scheduled export placeholder
+   * - LocalStorage persistence and simple offline-first behavior
+   * - Integration placeholders for Google Calendar and webhooks
+   ************************************************************************/
+
+  /* -------------------------
+     Utilities & persistence
+     ------------------------- */
+  const STORAGE_KEY = 'dw_full_v3';
+  const defaultState = {
+    weekData: [0,0,0,0,0,0,0], // Mon..Sun
+    sessions: [],             // {id,title,tags,minutes,date,synced}
+    goal: 180,
+    badges: [],
+    streak: 0,
+    lastActiveDate: null,
+    settings: { defaultFocus:25, defaultBreak:5, quietFrom:null, quietTo:null, dailyReminder:null },
+    theme: 'bg-night',
+    lastWeekData: null
+  };
+
+  let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || defaultState;
+
+  function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function resetState(){ state = JSON.parse(JSON.stringify(defaultState)); saveState(); location.reload(); }
+
+  function getTodayIndex(){ let i = new Date().getDay() - 1; if(i < 0) i = 6; return i; }
+  function todayKey(){ return new Date().toISOString().slice(0,10); }
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+
+  /* -------------------------
+     Theme & UI init
+     ------------------------- */
+  document.getElementById('themeSwitcher').value = state.theme;
+  document.body.className = state.theme;
+  document.getElementById('themeSwitcher').addEventListener('change', e => {
+    state.theme = e.target.value; document.body.className = state.theme; saveState();
+  });
+
+  /* -------------------------
+     Charts: weekly and tag
+     ------------------------- */
+  const dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const weekCtx = document.getElementById('weekChart').getContext('2d');
+  const weekChart = new Chart(weekCtx, {
+    type: 'line',
+    data: { labels: dayNames, datasets: [{ label:'Minutes', data: state.weekData, tension:0.36, fill:true, backgroundColor:'rgba(6,182,212,0.08)', borderColor:'rgba(6,182,212,0.98)', pointRadius:3 }] },
+    options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{ color:'#9aa7bf' }, grid:{ color:'rgba(255,255,255,0.03)'} }, x:{ ticks:{ color:'#9aa7bf' }, grid:{ display:false } } }, maintainAspectRatio:false }
+  });
+
+  const tagCtx = document.getElementById('tagChart').getContext('2d');
+  let tagChart = new Chart(tagCtx, { type:'doughnut', data:{ labels:[], datasets:[{ data:[], backgroundColor:[] }] }, options:{ plugins:{legend:{position:'bottom'}}, maintainAspectRatio:false } });
+
+  function updateTagChart(){
+    const tagMap = {};
+    state.sessions.forEach(s => {
+      (s.tags || []).forEach(t => { tagMap[t] = (tagMap[t]||0) + s.minutes; });
+    });
+    const labels = Object.keys(tagMap);
+    const data = labels.map(l => tagMap[l]);
+    const colors = labels.map((_,i) => `hsl(${(i*47)%360} 70% 55%)`);
+    tagChart.data.labels = labels;
+    tagChart.data.datasets[0].data = data;
+    tagChart.data.datasets[0].backgroundColor = colors;
+    tagChart.update();
+    // update filterTag select
+    const filterTag = document.getElementById('filterTag');
+    const prev = filterTag.value;
+    filterTag.innerHTML = '<option value="">All tags</option>' + labels.map(l => `<option value="${l}">${l}</option>`).join('');
+    filterTag.value = prev;
+  }
+
+  /* -------------------------
+     Analytics & gamification
+     ------------------------- */
+  function computeAnalytics(){
+    const total = state.weekData.reduce((a,b)=>a+b,0);
+    const avg = Math.round(total/7);
+    const best = Math.max(...state.weekData);
+    const bestDay = dayNames[state.weekData.indexOf(best)];
+    let trend = '—';
+    if(state.lastWeekData && Array.isArray(state.lastWeekData)){
+      const lastTotal = state.lastWeekData.reduce((a,b)=>a+b,0);
+      const diff = total - lastTotal;
+      trend = diff === 0 ? 'No change' : (diff > 0 ? `↑ ${diff} mins vs last week` : `↓ ${Math.abs(diff)} mins vs last week`);
+    }
+    document.getElementById('analytics').innerHTML = `<strong>Weekly avg:</strong> ${avg} mins · <strong>Best day:</strong> ${bestDay} (${best} mins) · <strong>Trend:</strong> ${trend}`;
+  }
+
+  function computeLevel(totalMinutes){
+    if(totalMinutes >= 5000) return "Master";
+    if(totalMinutes >= 2000) return "Expert";
+    if(totalMinutes >= 800) return "Advanced";
+    if(totalMinutes >= 300) return "Intermediate";
+    return "Novice";
+  }
+
+  function awardBadges(){
+    const total = state.sessions.reduce((s,e)=>s+e.minutes,0);
+    const earned = new Set(state.badges);
+    if(total >= 100 && !earned.has('100-mins')) state.badges.push('100-mins');
+    if(total >= 500 && !earned.has('500-mins')) state.badges.push('500-mins');
+    if(state.streak >= 3 && !earned.has('3-day-streak')) state.badges.push('3-day-streak');
+    if(state.streak >= 7 && !earned.has('7-day-streak')) state.badges.push('7-day-streak');
+  }
+
+  function renderBadges(){
+    awardBadges();
+    const area = document.getElementById('badgesArea');
+    area.innerHTML = '';
+    state.badges.forEach(b => {
+      const el = document.createElement('span'); el.className = 'badge'; el.textContent = badgeLabel(b);
+      area.appendChild(el);
+    });
+  }
+  function badgeLabel(k){ return { '100-mins':'100 mins', '500-mins':'500 mins', '3-day-streak':'3-day streak', '7-day-streak':'7-day streak' }[k] || k; }
+
+  /* -------------------------
+     Session CRUD, filtering, rendering
+     ------------------------- */
+  function renderSessions(filter = {}) {
+    const tbody = document.getElementById('sessionTable');
+    tbody.innerHTML = '';
+    let rows = state.sessions.slice().reverse();
+    // apply filters
+    if(filter.text) rows = rows.filter(s => (s.title||'').toLowerCase().includes(filter.text.toLowerCase()) || (s.tags||[]).join(',').toLowerCase().includes(filter.text.toLowerCase()));
+    if(filter.tag) rows = rows.filter(s => (s.tags||[]).includes(filter.tag));
+    if(filter.from) rows = rows.filter(s => new Date(s.date) >= new Date(filter.from));
+    if(filter.to) rows = rows.filter(s => new Date(s.date) <= new Date(filter.to));
+    rows.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(s.title)}</td><td>${(s.tags||[]).map(t=>`<span class="badge">${escapeHtml(t)}</span>`).join(' ')}</td><td>${s.minutes}</td><td>${new Date(s.date).toLocaleString()}</td>
+        <td>
+          <button class="small" data-id="${s.id}" data-action="edit">Edit</button>
+          <button class="small btn-ghost" data-id="${s.id}" data-action="delete">Delete</button>
+          <button class="small btn-ghost" data-id="${s.id}" data-action="sync">Sync</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    // attach handlers
+    tbody.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.dataset.id;
+        const action = btn.dataset.action;
+        if(action === 'edit') openEditSession(id);
+        if(action === 'delete') deleteSession(id);
+        if(action === 'sync') syncSessionPlaceholder(id);
+      });
+    });
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function addSession(title, tags, minutes){
+    const entry = { id: uid(), title: title || 'Untitled', tags: tags || [], minutes: minutes, date: new Date().toISOString(), synced:false };
+    state.sessions.push(entry);
+    // update weekData
+    const idx = getTodayIndex();
+    state.weekData[idx] = (state.weekData[idx] || 0) + minutes;
+    // update streak if goal reached
+    updateStreakOnAdd();
+    saveState(); updateAll();
+  }
+
+  function openEditSession(id){
+    const s = state.sessions.find(x => x.id === id);
+    if(!s) return alert('Session not found');
+    const newTitle = prompt('Edit title', s.title);
+    if(newTitle === null) return;
+    const newTags = prompt('Edit tags (comma separated)', (s.tags||[]).join(','));
+    const newMinutes = prompt('Edit minutes', s.minutes);
+    if(newMinutes === null) return;
+    s.title = newTitle;
+    s.tags = newTags ? newTags.split(',').map(t=>t.trim()).filter(Boolean) : [];
+    const diff = parseInt(newMinutes) - s.minutes;
+    s.minutes = parseInt(newMinutes);
+    // update weekData for today only (approximate)
+    const idx = getTodayIndex();
+    state.weekData[idx] = (state.weekData[idx] || 0) + diff;
+    saveState(); updateAll();
+  }
+
+  function deleteSession(id){
+    if(!confirm('Delete this session?')) return;
+    const idx = state.sessions.findIndex(x => x.id === id);
+    if(idx === -1) return;
+    const s = state.sessions[idx];
+    // subtract from weekData (best-effort)
+    const dayIdx = getTodayIndex();
+    state.weekData[dayIdx] = Math.max(0, (state.weekData[dayIdx]||0) - s.minutes);
+    state.sessions.splice(idx,1);
+    saveState(); updateAll();
+  }
+
+  /* -------------------------
+     Filters
+     ------------------------- */
+  document.getElementById('applyFilter').addEventListener('click', () => {
+    const text = document.getElementById('filterText').value;
+    const tag = document.getElementById('filterTag').value;
+    const from = document.getElementById('filterFrom').value;
+    const to = document.getElementById('filterTo').value;
+    renderSessions({ text, tag, from: from ? new Date(from) : null, to: to ? new Date(to + 'T23:59:59') : null });
+  });
+  document.getElementById('clearFilter').addEventListener('click', () => {
+    document.getElementById('filterText').value = '';
+    document.getElementById('filterTag').value = '';
+    document.getElementById('filterFrom').value = '';
+    document.getElementById('filterTo').value = '';
+    renderSessions();
+  });
+
+  /* -------------------------
+     Quick log & UI helpers
+     ------------------------- */
+  document.getElementById('quickLog5').addEventListener('click', () => {
+    addSession('Quick 5m', [], 5);
+  });
+  document.getElementById('quickLog15').addEventListener('click', () => {
+    addSession('Quick 15m', [], 15);
+  });
+
+  /* -------------------------
+     Goal slider & progress ring
+     ------------------------- */
+  document.getElementById('goalSlider').value = state.goal;
+  document.getElementById('goalLabel').textContent = state.goal + ' mins';
+  document.getElementById('goalSlider').addEventListener('input', e => {
+    state.goal = parseInt(e.target.value); document.getElementById('goalLabel').textContent = state.goal + ' mins'; saveState(); updateAll();
+  });
+
+  function updateProgressUI(){
+    const used = state.weekData[getTodayIndex()] || 0;
+    const pct = Math.min(100, Math.round((used / state.goal) * 100));
+    const ring = document.getElementById('progressRing');
+    ring.textContent = pct + '%';
+    ring.style.background = `conic-gradient(rgba(6,182,212,0.95) 0% ${pct}%, rgba(255,255,255,0.06) ${pct}% 100%)`;
+    document.getElementById('progressMeta').textContent = `${used} / ${state.goal} mins`;
+    document.getElementById('todayUsage').textContent = `${Math.floor(used/60)}h ${used%60}m`;
+  }
+
+  /* -------------------------
+     Pomodoro engine (variants, auto-pause)
+     ------------------------- */
+  let engine = { seconds:0, phase:'stopped', intervalId:null, currentTitle:'', autoPause:true };
+
+  function renderTimer(){
+    const m = Math.floor(engine.seconds/60);
+    const s = engine.seconds%60;
+    document.getElementById('timerDisplay').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    document.getElementById('timerPhase').textContent = engine.phase === 'focus' ? 'Focus' : engine.phase === 'break' ? 'Break' : 'Stopped';
+  }
+
+  function startFocus(title, minutes){
+    engine.phase = 'focus'; engine.currentTitle = title || 'Untitled'; engine.seconds = minutes*60;
+    renderTimer();
+    if(engine.intervalId) clearInterval(engine.intervalId);
+    engine.intervalId = setInterval(() => {
+      if(engine.seconds > 0){ engine.seconds--; renderTimer(); }
+      else { clearInterval(engine.intervalId); engine.intervalId = null; onFocusComplete(minutes); }
+    }, 1000);
+    // start ambient if selected
+    startAmbientForPhase('focus');
+  }
+
+  function startBreak(minutes){
+    engine.phase = 'break'; engine.seconds = minutes*60; renderTimer();
+    if(engine.intervalId) clearInterval(engine.intervalId);
+    engine.intervalId = setInterval(() => {
+      if(engine.seconds > 0){ engine.seconds--; renderTimer(); }
+      else { clearInterval(engine.intervalId); engine.intervalId = null; onBreakComplete(); }
+    }, 1000);
+    startAmbientForPhase('break');
+  }
+
+  function pauseEngine(){
+    if(engine.intervalId){ clearInterval(engine.intervalId); engine.intervalId = null; notify('Timer paused'); }
+  }
+  function stopEngine(){
+    if(engine.intervalId){ clearInterval(engine.intervalId); engine.intervalId = null; }
+    engine.phase = 'stopped'; engine.seconds = 0; engine.currentTitle = ''; renderTimer(); stopAmbient();
+  }
+
+  function onFocusComplete(minutes){
+    // log minutes and update UI
+    addSession(engine.currentTitle || document.getElementById('sessionTitle').value || 'Untitled', parseTags(document.getElementById('sessionTags').value), minutes);
+    notify(`Focus complete: ${engine.currentTitle} (${minutes}m)`);
+    // start break automatically
+    const breakM = parseInt(document.getElementById('breakMinutes').value) || state.settings.defaultBreak;
+    startBreak(breakM);
+  }
+
+  function onBreakComplete(){
+    notify('Break finished — starting next focus');
+    const focusM = parseInt(document.getElementById('focusMinutes').value) || state.settings.defaultFocus;
+    const title = document.getElementById('sessionTitle').value || engine.currentTitle || 'Untitled';
+    startFocus(title, focusM);
+  }
+
+  document.getElementById('startCycle').addEventListener('click', () => {
+    const preset = document.getElementById('cyclePreset').value;
+    if(preset === 'classic'){ document.getElementById('focusMinutes').value = 25; document.getElementById('breakMinutes').value = 5; }
+    if(preset === 'short'){ document.getElementById('focusMinutes').value = 15; document.getElementById('breakMinutes').value = 3; }
+    if(preset === 'long'){ document.getElementById('focusMinutes').value = 50; document.getElementById('breakMinutes').value = 10; }
+    const focusM = parseInt(document.getElementById('focusMinutes').value) || state.settings.defaultFocus;
+    const title = document.getElementById('sessionTitle').value || 'Untitled';
+    startFocus(title, focusM);
+  });
+  document.getElementById('pauseCycle').addEventListener('click', pauseEngine);
+  document.getElementById('stopCycle').addEventListener('click', stopEngine);
+  document.getElementById('skipToBreak').addEventListener('click', () => {
+    if(engine.phase === 'focus'){
+      // log partial minutes (rounded)
+      const elapsed = (parseInt(document.getElementById('focusMinutes').value) * 60) - engine.seconds;
+      const mins = Math.max(1, Math.round(elapsed/60));
+      if(mins > 0) addSession(engine.currentTitle || document.getElementById('sessionTitle').value || 'Untitled', parseTags(document.getElementById('sessionTags').value), mins);
+      const breakM = parseInt(document.getElementById('breakMinutes').value) || state.settings.defaultBreak;
+      startBreak(breakM);
+    }
+  });
+
+  // Auto-pause on blur
+  window.addEventListener('blur', () => { if(document.getElementById('autoPause').checked) pauseEngine(); });
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', (e) => {
+    if(e.code === 'Space'){ e.preventDefault(); if(engine.intervalId) pauseEngine(); else { const focusM = parseInt(document.getElementById('focusMinutes').value) || state.settings.defaultFocus; startFocus(document.getElementById('sessionTitle').value || 'Untitled', focusM); } }
+    if(e.key.toLowerCase() === 's'){ stopEngine(); }
+  });
+
+  /* -------------------------
+     Tags helper
+     ------------------------- */
+  function parseTags(text){
+    if(!text) return [];
+    return text.split(',').map(t=>t.trim()).filter(Boolean);
+  }
+
+  /* -------------------------
+     Notifications, quiet hours, reminders
+     ------------------------- */
+  function isQuietNow(){
+    const qFrom = state.settings.quietFrom;
+    const qTo = state.settings.quietTo;
+    if(!qFrom || !qTo) return false;
+    const now = new Date();
+    const [fh, fm] = qFrom.split(':').map(Number);
+    const [th, tm] = qTo.split(':').map(Number);
+    const from = new Date(); from.setHours(fh, fm, 0, 0);
+    const to = new Date(); to.setHours(th, tm, 0, 0);
+    if(from <= to) return now >= from && now <= to;
+    // overnight
+    return now >= from || now <= to;
+  }
+
+  function notify(msg){
+    if(isQuietNow()) return;
+    if("Notification" in window && Notification.permission === "granted"){
+      new Notification(msg);
+    } else {
+      // fallback: small in-page console
+      console.log('Notify:', msg);
+    }
+    // duck ambient if enabled
+    if(document.getElementById('duckOnNotify').checked) duckAmbient();
+  }
+
+  // Request permission on load
+  if("Notification" in window && Notification.permission !== "granted") {
+    Notification.requestPermission().catch(()=>{});
+  }
+
+  // Daily reminder scheduling (simple)
+  function scheduleDailyReminder(){
+    const time = state.settings.dailyReminder;
+    if(!time) return;
+    // compute ms until next occurrence
+    const [h,m] = time.split(':').map(Number);
+    const now = new Date();
+    const next = new Date(); next.setHours(h,m,0,0);
+    if(next <= now) next.setDate(next.getDate()+1);
+    const delay = next - now;
+    setTimeout(() => { notify('Daily reminder: check your focus progress'); scheduleDailyReminder(); }, delay);
+  }
+
+  /* -------------------------
+     Ambient audio engine (per-phase, ducking, crossfade)
+     ------------------------- */
+  const ambientSources = {
+    rain: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    waves: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    focus: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
+  };
+  const audioA = new Audio(); const audioB = new Audio();
+  audioA.loop = audioB.loop = true; audioA.crossOrigin = audioB.crossOrigin = 'anonymous';
+  let activeAudio = audioA, standbyAudio = audioB, ambientPlaying = false;
+
+  function startAmbientForPhase(phase){
+    const sel = document.getElementById('ambientSelect').value;
+    if(!sel) return;
+    const url = sel === 'upload' ? (localStorage.getItem('dw_ambient_upload') || '') : ambientSources[sel];
+    if(!url) return;
+    if(!ambientPlaying){
+      activeAudio.src = url; activeAudio.loop = true; activeAudio.volume = parseFloat(document.getElementById('ambientVolume').value || 0.6); activeAudio.play().catch(()=>{});
+      ambientPlaying = true;
+    } else {
+      // crossfade if enabled
+      if(document.getElementById('crossfadeToggle') && document.getElementById('crossfadeToggle').checked){
+        standbyAudio.src = url; standbyAudio.loop = true; standbyAudio.volume = 0; standbyAudio.play().catch(()=>{});
+        crossfade(activeAudio, standbyAudio, 1500);
+      } else {
+        activeAudio.src = url; activeAudio.play().catch(()=>{});
+      }
+    }
+  }
+
+  function crossfade(from, to, ms){
+    const steps = 20; const step = ms/steps;
+    let i = 0; to.volume = 0; to.play().catch(()=>{});
+    const iv = setInterval(()=>{ i++; to.volume = (i/steps) * parseFloat(document.getElementById('ambientVolume').value); from.volume = (1 - i/steps) * parseFloat(document.getElementById('ambientVolume').value); if(i>=steps){ clearInterval(iv); from.pause(); const tmp = activeAudio; activeAudio = to; standbyAudio = tmp; } }, step);
+  }
+
+  function pauseAmbient(){ if(activeAudio) activeAudio.pause(); ambientPlaying = false; }
+  function stopAmbient(){ if(activeAudio) activeAudio.pause(); if(standbyAudio) standbyAudio.pause(); ambientPlaying = false; }
+  function duckAmbient(){ if(activeAudio && !activeAudio.paused){ const orig = activeAudio.volume; activeAudio.volume = Math.max(0.05, orig * 0.3); setTimeout(()=> activeAudio.volume = orig, 2000); } }
+
+  document.getElementById('playAmbient').addEventListener('click', () => startAmbientForPhase('focus'));
+  document.getElementById('pauseAmbient').addEventListener('click', pauseAmbient);
+  document.getElementById('ambientSelect').addEventListener('change', (e) => {
+    if(e.target.value === 'upload') document.getElementById('ambientUpload').click();
+  });
+  document.getElementById('ambientUpload').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    const url = URL.createObjectURL(f); localStorage.setItem('dw_ambient_upload', url); startAmbientForPhase('focus');
+  });
+  document.getElementById('ambientVolume').addEventListener('input', (e) => { const v = parseFloat(e.target.value); activeAudio.volume = v; standbyAudio.volume = v; });
+
+  /* -------------------------
+     Export & scheduled export
+     ------------------------- */
+  function exportCSV(range = {}, tagFilter = '') {
+    const rows = [['Title','Tags','Minutes','Date']];
+    state.sessions.forEach(s => {
+      if(tagFilter && !(s.tags||[]).includes(tagFilter)) return;
+      if(range.from && new Date(s.date) < new Date(range.from)) return;
+      if(range.to && new Date(s.date) > new Date(range.to + 'T23:59:59')) return;
+      rows.push([s.title, (s.tags||[]).join(';'), s.minutes, s.date]);
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `dw_sessions_${todayKey()}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  }
+  function exportJSON(range = {}, tagFilter = '') {
+    const out = state.sessions.filter(s => {
+      if(tagFilter && !(s.tags||[]).includes(tagFilter)) return false;
+      if(range.from && new Date(s.date) < new Date(range.from)) return false;
+      if(range.to && new Date(s.date) > new Date(range.to + 'T23:59:59')) return false;
+      return true;
+    });
+    const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `dw_sessions_${todayKey()}.json`; document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  document.getElementById('exportCSV').addEventListener('click', () => exportCSV({}, document.getElementById('filterTag').value));
+  document.getElementById('exportJSON').addEventListener('click', () => exportJSON({}, document.getElementById('filterTag').value));
+  document.getElementById('scheduledExport').addEventListener('click', () => {
+    alert('Scheduled export placeholder: in a real app you would schedule a background job or server-side export. This demo will trigger an export in 10 seconds.');
+    setTimeout(()=> exportCSV({}, ''), 10000);
+  });
+
+  /* -------------------------
+     Reminders & quiet hours UI
+     ------------------------- */
+  document.getElementById('saveSettings').addEventListener('click', () => {
+    state.settings.defaultFocus = parseInt(document.getElementById('defaultFocus').value) || 25;
+    state.settings.defaultBreak = parseInt(document.getElementById('defaultBreak').value) || 5;
+    state.settings.quietFrom = document.getElementById('quietFrom').value || null;
+    state.settings.quietTo = document.getElementById('quietTo').value || null;
+    state.settings.dailyReminder = document.getElementById('dailyReminder').value || null;
+    saveState();
+    scheduleDailyReminder();
+    alert('Settings saved');
+  });
+
+  document.getElementById('deleteAll').addEventListener('click', () => {
+    if(confirm('Delete all local data? This cannot be undone.')) { resetState(); }
+  });
+  document.getElementById('exportAll').addEventListener('click', () => { exportJSON(); });
+
+  function scheduleDailyReminder(){
+    const time = state.settings.dailyReminder;
+    if(!time) return;
+    const [h,m] = time.split(':').map(Number);
+    const now = new Date(); const next = new Date(); next.setHours(h,m,0,0); if(next <= now) next.setDate(next.getDate()+1);
+    const delay = next - now;
+    setTimeout(()=> { if(!isQuietNow()) notify('Daily reminder: check your progress'); scheduleDailyReminder(); }, delay);
+  }
+  scheduleDailyReminder();
+
+  /* -------------------------
+     Streak logic
+     ------------------------- */
+  function updateStreakOnAdd(){
+    const today = todayKey();
+    const last = state.lastActiveDate;
+    if(last === today) return;
+    // check yesterday's minutes
+    const prevIndex = (getTodayIndex() + 6) % 7;
+    if(state.weekData[prevIndex] >= state.goal) state.streak = (state.streak || 0) + 1;
+    else state.streak = 0;
+    state.lastActiveDate = today;
+  }
+
+  /* -------------------------
+     Integrations placeholders
+     ------------------------- */
+  document.getElementById('authorizeGoogle').addEventListener('click', () => {
+    alert('Google Calendar integration placeholder. To enable, create OAuth credentials and implement client-side flow.');
+  });
+  document.getElementById('sendWebhook').addEventListener('click', () => {
+    const url = document.getElementById('webhookUrl').value;
+    if(!url) return alert('Enter webhook URL');
+    // send last session as example
+    const last = state.sessions[state.sessions.length - 1];
+    if(!last) return alert('No sessions to send');
+    fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(last) })
+      .then(r => alert('Webhook sent, response ' + r.status)).catch(e => alert('Webhook error: ' + e));
+  });
+
+  function syncSessionPlaceholder(id){
+    alert('Sync placeholder: implement calendar API or webhook to sync session id ' + id);
+  }
+
+  /* -------------------------
+     Session creation from UI
+     ------------------------- */
+  function addSessionFromUI(){
+    const title = document.getElementById('sessionTitle').value || 'Untitled';
+    const tags = parseTags(document.getElementById('sessionTags').value);
+    const minutes = parseInt(document.getElementById('focusMinutes').value) || state.settings.defaultFocus;
+    addSession(title, tags, minutes);
+    document.getElementById('sessionTitle').value = '';
+    document.getElementById('sessionTags').value = '';
+  }
+
+  // Add session helper used by engine
+  function addSession(title, tags, minutes){
+    const entry = { id: uid(), title, tags, minutes, date: new Date().toISOString(), synced:false };
+    state.sessions.push(entry);
+    const idx = getTodayIndex();
+    state.weekData[idx] = (state.weekData[idx] || 0) + minutes;
+    updateStreakOnAdd();
+    saveState(); updateAll();
+  }
+
+  /* -------------------------
+     Session editing/deleting already implemented above
+     ------------------------- */
+
+  /* -------------------------
+     Update all UI pieces
+     ------------------------- */
+  function updateAll(){
+    weekChart.data.datasets[0].data = state.weekData;
+    weekChart.update();
+    updateTagChart();
+    computeAnalytics();
+    renderSessions();
+    updateProgressUI();
+    renderBadges();
+    saveState();
+  }
+
+  // initial UI population
+  document.getElementById('defaultFocus').value = state.settings.defaultFocus || 25;
+  document.getElementById('defaultBreak').value = state.settings.defaultBreak || 5;
+  document.getElementById('quietFrom').value = state.settings.quietFrom || '';
+  document.getElementById('quietTo').value = state.settings.quietTo || '';
+  document.getElementById('dailyReminder').value = state.settings.dailyReminder || '';
+  updateAll();
+
+  /* -------------------------
+     Local offline-first & service worker (PWA) registration
+     ------------------------- */
+  if('serviceWorker' in navigator){
+    // register a simple service worker via blob (self-contained)
+    const swCode = `
+      const CACHE = 'dw-cache-v1';
+      self.addEventListener('install', e => {
+        e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/'])).catch(()=>{}));
+        self.skipWaiting();
+      });
+      self.addEventListener('fetch', e => {
+        e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+      });
+    `;
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).catch(()=>{});
+  }
+
+  /* -------------------------
+     Accessibility: announce updates
+     ------------------------- */
+  // aria-live used in elements for dynamic updates
+
+  /* -------------------------
+     Telemetry / testing hooks (opt-in)
+     ------------------------- */
+  // Placeholder: in a real app you'd integrate opt-in telemetry (Sentry or similar)
+  window.__dwTelemetry = { enabled: false, events: [] };
+  function telemetry(event, data){ if(window.__dwTelemetry.enabled) { window.__dwTelemetry.events.push({event,data,t:new Date().toISOString()}); } }
+
+  /* -------------------------
+     Helper: parse tags for filter select
+     ------------------------- */
+  function populateFilterTags(){
+    const tagSet = new Set();
+    state.sessions.forEach(s => (s.tags||[]).forEach(t => tagSet.add(t)));
+    const sel = document.getElementById('filterTag');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">All tags</option>' + Array.from(tagSet).map(t => `<option value="${t}">${t}</option>`).join('');
+    sel.value = prev;
+  }
+
+  // call periodically to refresh UI
+  setInterval(() => { populateFilterTags(); }, 3000);
+
+  // initial populate
+  populateFilterTags();
+
+  // expose some functions for debugging
+  window.dw = { state, addSession, updateAll, exportCSV, exportJSON, resetState };
+
+  </script>
+</body>
+</html>

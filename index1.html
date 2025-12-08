@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Digital Wellness — Dashboard</title>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* --- Design tokens --- */
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#9aa7bf;
+      --accent-1: linear-gradient(135deg,#7c3aed,#06b6d4);
+      --glass: rgba(255,255,255,0.03);
+      --radius:14px;
+    }
+
+    /* --- Reset --- */
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(7,11,21,0.6), transparent),
+                  radial-gradient(900px 500px at 90% 90%, rgba(8,15,30,0.5), transparent),
+                  var(--bg);
+      color:#e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:36px;
+    }
+
+    /* --- Layout --- */
+    .container{max-width:1180px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .brand .logo{
+      width:54px;height:54px;border-radius:12px;
+      background:var(--accent-1);
+      display:flex;align-items:center;justify-content:center;font-weight:700;
+      box-shadow:0 6px 30px rgba(124,58,237,0.12);
+    }
+    nav{display:flex;gap:16px;align-items:center}
+    nav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:14px}
+    .btn{
+      background:linear-gradient(90deg,#10b981,#06b6d4);
+      border:none;padding:10px 16px;border-radius:10px;color:white;font-weight:700;cursor:pointer;
+      box-shadow:0 8px 30px rgba(3,105,161,0.12)
+    }
+
+    /* --- Hero + summary --- */
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:24px;align-items:start}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+      border-radius:var(--radius);padding:20px;border:1px solid rgba(255,255,255,0.04);
+      box-shadow: 0 6px 30px rgba(2,6,23,0.6);
+    }
+    .hero h1{margin:0;font-size:28px;line-height:1.02}
+    .hero p{color:var(--muted);margin-top:10px;margin-bottom:18px}
+
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+
+    /* --- Right column --- */
+    .summary{display:flex;flex-direction:column;gap:16px}
+    .usage-card{display:flex;gap:14px;align-items:center}
+    .ring {
+      width:88px;height:88px;border-radius:999px;background:conic-gradient(#06b6d4 0% 65%, rgba(255,255,255,0.06) 65% 100%);
+      display:grid;place-items:center;font-weight:700;font-size:16px;
+      box-shadow: inset 0 -8px 22px rgba(0,0,0,0.45);
+    }
+    .usage-meta{flex:1}
+    .usage-meta small{display:block;color:var(--muted);font-weight:600}
+    .usage-meta strong{display:block;font-size:18px;margin-top:6px}
+
+    /* --- Cards row --- */
+    .cards-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+    .feature{
+      padding:18px;border-radius:12px;background:var(--card);border:1px solid rgba(255,255,255,0.025);
+    }
+    .feature h3{margin:0 0 8px 0;font-size:15px}
+    .feature p{margin:0;color:var(--muted);font-size:13px}
+
+    /* --- Chart area --- */
+    .chart-wrap{margin-top:18px;background:var(--card);padding:18px;border-radius:12px}
+    canvas{width:100% !important;height:240px !important}
+
+    /* --- Responsive --- */
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr; }
+      .cards-row{grid-template-columns:repeat(2,1fr)}
+    }
+    @media (max-width:560px){
+      .cards-row{grid-template-columns:1fr}
+      header{flex-direction:column;align-items:flex-start;gap:12px}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">DW</div>
+        <div>
+          <div style="font-weight:800">Digital Wellness</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Focus, track, and reclaim time</div>
+        </div>
+      </div>
+
+      <nav>
+        <a href="#">Dashboard</a>
+        <a href="#">Tracker</a>
+        <a href="#">Insights</a>
+        <button class="btn">Open App</button>
+      </nav>
+    </header>
+
+    <main class="grid">
+      <!-- Left column: hero & content -->
+      <section class="card hero">
+        <h1>Get back time. Improve focus.</h1>
+        <p>Digital Wellness helps you understand and reduce distracting screen time with clear daily goals, gentle reminders, and actionable insights.</p>
+
+        <div class="actions">
+          <button class="btn">Start a 14-day plan</button>
+          <button style="background:transparent;border:1px solid rgba(255,255,255,0.06);padding:10px 14px;border-radius:10px;color:var(--muted);font-weight:700">How it works</button>
+        </div>
+
+        <div class="cards-row" aria-hidden="false">
+          <div class="feature">
+            <h3>Daily Limit</h3>
+            <p>Set a classroom-friendly daily limit and receive recap notifications.</p>
+          </div>
+          <div class="feature">
+            <h3>Focus Sessions</h3>
+            <p>Pomodoro-style sessions with gentle lockouts and progress tracking.</p>
+          </div>
+          <div class="feature">
+            <h3>Family Mode</h3>
+            <p>Device schedules and gentle nudges to help everyone disconnect.</p>
+          </div>
+        </div>
+
+        <div class="chart-wrap">
+          <canvas id="weekChart"></canvas>
+        </div>
+      </section>
+
+      <!-- Right column: summary / usage -->
+      <aside>
+        <div class="card summary">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <small style="color:var(--muted);font-weight:700">Today</small>
+              <div style="font-weight:800;font-size:20px;margin-top:6px">2h 34m</div>
+            </div>
+            <div class="ring" id="progressRing" title="Usage vs goal">
+              65%
+            </div>
+          </div>
+
+          <div style="margin-top:12px;color:var(--muted);font-size:13px">
+            Goal: 3h/day · Remaining: 26%
+          </div>
+
+          <div style="margin-top:16px;display:flex;gap:10px;flex-direction:column">
+            <div class="usage-card">
+              <div style="width:46px;height:46px;border-radius:10px;background:rgba(255,255,255,0.03);display:grid;place-items:center;font-weight:700">A</div>
+              <div class="usage-meta">
+                <small>Most used app</small>
+                <strong>YouTube — 58m</strong>
+              </div>
+            </div>
+
+            <div class="usage-card">
+              <div style="width:46px;height:46px;border-radius:10px;background:rgba(255,255,255,0.03);display:grid;place-items:center;font-weight:700">S</div>
+              <div class="usage-meta">
+                <small>Longest session</small>
+                <strong>45m — evening</strong>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:6px">
+              <button style="flex:1;background:transparent;border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:10px;color:var(--muted)">Pause apps</button>
+              <button class="btn" style="flex:1">Start focus</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- small learn card -->
+        <div style="height:18px"></div>
+        <div class="card" style="margin-top:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:800">Quick Tip</div>
+              <div style="color:var(--muted);font-size:13px;margin-top:6px">Turn off non-essential notifications between 9pm–7am.</div>
+            </div>
+            <div style="font-size:12px;color:var(--muted)">2 min read</div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer style="margin-top:26px;color:var(--muted);font-size:13px;text-align:center">
+      © Digital Wellness · Made with focus
+    </footer>
+  </div>
+
+  <script>
+    // Week usage sample data (replace with real data from your backend)
+    const weekLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    const weekData = [120, 140, 100, 80, 200, 160, 154]; // minutes
+
+    const ctx = document.getElementById('weekChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: weekLabels,
+        datasets: [{
+          label: 'Daily minutes',
+          data: weekData,
+          tension: 0.36,
+          fill: true,
+          backgroundColor: 'rgba(6,182,212,0.08)',
+          borderColor: 'rgba(6,182,212,0.98)',
+          pointRadius: 3,
+          pointHoverRadius: 6,
+        }]
+      },
+      options: {
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              label: ctx => `${ctx.formattedValue} minutes`
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#9aa7bf' },
+            grid: {color:'rgba(255,255,255,0.03)'}
+          },
+          x: {
+            ticks: { color: '#9aa7bf' },
+            grid: {display:false}
+          }
+        },
+        maintainAspectRatio:false
+      }
+    });
+
+    // Render progress ring numeric value (example)
+    (function(){
+      // Suppose goal is 180 minutes, used = 117 minutes -> 65%
+      const used = 154;
+      const goal = 240;
+      const pct = Math.round(used/goal * 100);
+      const ring = document.getElementById('progressRing');
+      ring.textContent = pct + '%';
+      // set conic-gradient dynamically:
+      ring.style.background = `conic-gradient(#06b6d4 0% ${pct}%, rgba(255,255,255,0.06) ${pct}% 100%)`;
+    })();
+  </script>
+</body>
+</html>
+

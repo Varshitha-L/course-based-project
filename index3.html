@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Digital Wellness — All Features Scaffold</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Firebase (compat) - only used if you paste config below -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <!-- Google API client (gapi) -->
+  <script src="https://apis.google.com/js/api.js" defer></script>
+
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa7bf; --accent:#06b6d4; --accent-2:#7c3aed;
+      --radius:12px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(7,11,21,0.6), transparent),
+                  radial-gradient(900px 500px at 90% 90%, rgba(8,15,30,0.5), transparent),
+                  var(--bg);
+      color:#e6eef8; padding:20px;
+    }
+    .container{max-width:1200px;margin:0 auto}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(90deg,var(--accent-2),var(--accent));display:grid;place-items:center;font-weight:800}
+    nav{display:flex;gap:12px;align-items:center}
+    nav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:14px}
+
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px;align-items:start}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:16px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.04); box-shadow:0 8px 30px rgba(2,6,23,0.6);}
+    h2{margin:0 0 8px 0}
+    .muted{color:var(--muted);font-size:13px}
+
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input[type="number"], input[type="text"], select, textarea { padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06); background:transparent; color:inherit; min-width:120px; }
+    input[type="range"]{width:160px}
+    button{padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent),#10b981);color:#fff;font-weight:700;cursor:pointer}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .small{padding:6px 8px;font-size:13px}
+
+    .chart-wrap{margin-top:12px;background:var(--card);padding:12px;border-radius:10px}
+    canvas{width:100% !important;height:220px !important}
+
+    .ring{width:88px;height:88px;border-radius:999px;display:grid;place-items:center;font-weight:800;font-size:16px;box-shadow:inset 0 -8px 22px rgba(0,0,0,0.45)}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:left}
+    .badge{display:inline-block;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.04);font-weight:700;margin-right:6px}
+
+    .flex-col{display:flex;flex-direction:column;gap:8px}
+    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+
+    :focus { outline: 3px solid rgba(6,182,212,0.25); outline-offset: 2px; }
+
+    @media (max-width:980px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="container" role="application" aria-label="Digital Wellness Dashboard">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">DW</div>
+        <div>
+          <div style="font-weight:800">Digital Wellness</div>
+          <div class="muted">Focus, track, and reclaim time</div>
+        </div>
+      </div>
+
+      <nav aria-label="Main navigation">
+        <a href="#" class="small">Dashboard</a>
+        <a href="#" class="small">Tracker</a>
+        <a href="#" class="small">Insights</a>
+        <button id="openApp" class="small" aria-label="Open app">Open App</button>
+        <select id="themeSwitcher" aria-label="Theme switcher" title="Theme">
+          <option value="bg-night">Night</option>
+          <option value="bg-sunrise">Sunrise</option>
+          <option value="bg-ocean">Ocean</option>
+          <option value="bg-forest">Forest</option>
+          <option value="bg-bright">Bright</option>
+        </select>
+      </nav>
+    </header>
+
+    <main class="grid">
+      <!-- Left column -->
+      <section class="card" aria-labelledby="pomodoroTitle">
+        <h2 id="pomodoroTitle">Pomodoro & Session Logger</h2>
+        <div class="muted">Name sessions, choose tags, set custom cycles, and run automated Pomodoro variants.</div>
+
+        <div style="margin-top:12px" class="row" role="form" aria-label="Session form">
+          <input type="text" id="sessionTitle" placeholder="Session title (e.g., DSA practice)" aria-label="Session title" />
+          <input type="text" id="sessionTags" placeholder="Tags (comma separated)" aria-label="Session tags" />
+          <label class="muted">Cycle</label>
+          <select id="cyclePreset" aria-label="Cycle preset">
+            <option value="classic">Classic 25/5</option>
+            <option value="short">Short 15/3</option>
+            <option value="long">Deep 50/10</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input type="number" id="focusMinutes" value="25" min="1" aria-label="Focus minutes" style="width:90px" />
+          <div class="muted">focus mins</div>
+          <input type="number" id="breakMinutes" value="5" min="1" aria-label="Break minutes" style="width:90px" />
+          <div class="muted">break mins</div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button id="startCycle">Start Cycle</button>
+          <button id="pauseCycle" class="btn-ghost">Pause</button>
+          <button id="stopCycle" class="btn-ghost">Stop</button>
+          <button id="skipToBreak" class="btn-ghost">Skip to Break</button>
+          <label class="muted" style="margin-left:auto">Auto-pause on blur</label>
+          <input type="checkbox" id="autoPause" checked aria-label="Auto pause on blur" />
+        </div>
+
+        <div style="margin-top:14px" class="row">
+          <div style="flex:1">
+            <div id="timerPhase" style="font-weight:800">Stopped</div>
+            <div id="timerDisplay" style="font-size:36px;font-weight:800">00:00</div>
+            <div class="muted">Keyboard: Space to start/pause, S to stop</div>
+          </div>
+
+          <div style="width:180px;text-align:center">
+            <div class="muted">Today</div>
+            <div id="todayUsage" style="font-weight:800;font-size:18px">0h 0m</div>
+            <div style="margin-top:8px">
+              <button id="quickLog5" class="btn-ghost small">+5m</button>
+              <button id="quickLog15" class="btn-ghost small">+15m</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-wrap" aria-hidden="false" style="margin-top:12px">
+          <canvas id="weekChart" role="img" aria-label="Weekly usage chart"></canvas>
+        </div>
+
+        <div style="margin-top:12px" class="row">
+          <label class="muted">Daily Goal</label>
+          <input type="range" id="goalSlider" min="60" max="480" step="15" aria-label="Daily goal slider" />
+          <div id="goalLabel" class="badge" aria-live="polite"></div>
+          <div style="flex:1"></div>
+          <button id="exportCSV" class="small btn-ghost">Export CSV</button>
+          <button id="exportJSON" class="small btn-ghost">Export JSON</button>
+          <button id="scheduledExport" class="small btn-ghost">Schedule Export</button>
+        </div>
+
+        <div style="margin-top:12px" class="muted">Analytics & Insights</div>
+        <div id="analytics" style="margin-top:8px" class="muted" aria-live="polite"></div>
+
+        <div style="margin-top:12px">
+          <h3 class="muted">Tag breakdown</h3>
+          <canvas id="tagChart" aria-label="Tag breakdown chart"></canvas>
+        </div>
+      </section>
+
+      <!-- Right column -->
+      <aside class="card flex-col" aria-labelledby="progressTitle">
+        <div>
+          <h3 id="progressTitle" style="margin:0">Progress</h3>
+          <div class="row" style="margin-top:10px;align-items:center">
+            <div class="ring" id="progressRing" aria-hidden="false">0%</div>
+            <div style="flex:1">
+              <div class="muted">Goal progress</div>
+              <div id="progressMeta" style="font-weight:800">0 / 0 mins</div>
+              <div style="margin-top:8px" id="badgesArea" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <h3 style="margin:0">Session Log</h3>
+          <div class="row" style="margin-top:8px">
+            <input type="text" id="filterText" placeholder="Search title or tag" aria-label="Search sessions" />
+            <select id="filterTag" aria-label="Filter by tag"><option value="">All tags</option></select>
+            <input type="date" id="filterFrom" aria-label="From date" />
+            <input type="date" id="filterTo" aria-label="To date" />
+            <button id="applyFilter" class="small btn-ghost">Apply</button>
+            <button id="clearFilter" class="small btn-ghost">Clear</button>
+          </div>
+
+          <table aria-live="polite" aria-label="Session log table">
+            <thead><tr><th>Title</th><th>Tags</th><th>Minutes</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody id="sessionTable"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:12px">
+          <h3 style="margin:0">Break Tip</h3>
+          <div id="breakTip" class="muted" style="margin-top:8px">Take a short walk, stretch, or breathe deeply.</div>
+          <div style="margin-top:8px" class="muted">Ambient: 
+            <select id="ambientSelect" aria-label="Ambient audio">
+              <option value="">None</option>
+              <option value="rain">Rain</option>
+              <option value="waves">Waves</option>
+              <option value="focus">Soft hum</option>
+              <option value="upload">Upload audio</option>
+            </select>
+          </div>
+          <div class="audio-controls" style="margin-top:8px">
+            <button id="playAmbient" class="small">Play</button>
+            <button id="pauseAmbient" class="small btn-ghost">Pause</button>
+            <label class="muted">Volume</label>
+            <input type="range" id="ambientVolume" min="0" max="1" step="0.01" value="0.6" />
+            <label class="muted">Duck on notification</label>
+            <input type="checkbox" id="duckOnNotify" checked />
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <h3 style="margin:0">Settings & Reminders</h3>
+          <div class="muted" style="margin-top:8px">Quiet hours (no notifications / audio)</div>
+          <div class="row" style="margin-top:8px">
+            <input type="time" id="quietFrom" aria-label="Quiet from" />
+            <input type="time" id="quietTo" aria-label="Quiet to" />
+            <label class="muted">Daily reminder</label>
+            <input type="time" id="dailyReminder" aria-label="Daily reminder" />
+            <button id="saveSettings" class="small">Save</button>
+          </div>
+
+          <div style="margin-top:8px" class="muted">Privacy & Data</div>
+          <div class="row" style="margin-top:8px">
+            <button id="exportAll" class="small btn-ghost">Export All</button>
+            <button id="deleteAll" class="small btn-ghost">Delete All</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <h3 style="margin:0">Integrations</h3>
+          <div class="muted" style="margin-top:8px">Google Calendar sync and webhooks (placeholders)</div>
+          <div class="row" style="margin-top:8px">
+            <button id="authorizeGoogle" class="small">Authorize Google</button>
+            <button id="syncToCalendar" class="small btn-ghost">Sync Selected</button>
+            <input type="text" id="webhookUrl" placeholder="Webhook URL" style="min-width:160px" />
+            <button id="sendWebhook" class="small btn-ghost">Send</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer>© Digital Wellness · Built for focus</footer>
+  </div>
+
+  <input type="file" id="ambientUpload" accept="audio/*" style="display:none" />
+
+  <script>
+  /************************************************************************
+   * All-features scaffold script (client-side)
+   * - Local persistence (localStorage)
+   * - Pomodoro engine, templates, macros, voice notes
+   * - Ambient audio, crossfade, ducking
+   * - Analytics, tags, heatmap, badges, streaks
+   * - Export CSV/JSON, scheduled export placeholder
+   * - Placeholders and scaffolds for Firebase and Google Calendar integration
+   ************************************************************************/
+
+  /* -------------------------
+     Credentials placeholders
+     ------------------------- */
+  // Paste your Firebase config object here to enable Firebase sync:
+  const FIREBASE_CONFIG = null; // e.g. { apiKey: "...", authDomain: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." }
+
+  // Paste your Google credentials here to enable Calendar sync:
+  const GOOGLE_CLIENT_ID = null; // e.g. "1234-abc.apps.googleusercontent.com"
+  const GOOGLE_API_KEY = null;   // e.g. "AIzaSy..."
+
+  /* -------------------------
+     Local state & persistence
+     ------------------------- */
+  const KEY = 'dw_all_v1';
+  const defaultState = {
+    sessions: [], // {id,title,tags,minutes,date,synced,voiceNote}
+    weekData: [0,0,0,0,0,0,0],
+    goal: 180,
+    badges: [],
+    streak: 0,
+    lastActiveDate: null,
+    settings: { defaultFocus:25, defaultBreak:5, quietFrom:null, quietTo:null, dailyReminder:null },
+    templates: [],
+    onboarding: { day:0 },
+    abFlags: {},
+    telemetryOptIn: false
+  };
+  let state = JSON.parse(localStorage.getItem(KEY) || 'null') || defaultState;
+  function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+  function getTodayIndex(){ let i = new Date().getDay()-1; if(i<0) i=6; return i; }
+
+  /* -------------------------
+     Charts
+     ------------------------- */
+  const dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const weekCtx = document.getElementById('weekChart').getContext('2d');
+  const weekChart = new Chart(weekCtx, {
+    type:'line',
+    data:{ labels: dayNames, datasets:[{ label:'Minutes', data: state.weekData, tension:0.36, fill:true, backgroundColor:'rgba(6,182,212,0.08)', borderColor:'rgba(6,182,212,0.98)', pointRadius:3 }] },
+    options:{ plugins:{legend:{display:false}}, maintainAspectRatio:false }
+  });
+  const tagCtx = document.getElementById('tagChart').getContext('2d');
+  let tagChart = new Chart(tagCtx, { type:'doughnut', data:{ labels:[], datasets:[{ data:[], backgroundColor:[] }] }, options:{ maintainAspectRatio:false } });
+
+  function updateCharts(){
+    weekChart.data.datasets[0].data = state.weekData;
+    weekChart.update();
+    const tagMap = {};
+    state.sessions.forEach(s => (s.tags||[]).forEach(t => tagMap[t] = (tagMap[t]||0) + s.minutes));
+    const labels = Object.keys(tagMap);
+    tagChart.data.labels = labels;
+    tagChart.data.datasets[0].data = labels.map(l => tagMap[l]);
+    tagChart.data.datasets[0].backgroundColor = labels.map((_,i)=>`hsl(${(i*47)%360} 70% 55%)`);
+    tagChart.update();
+  }
+
+  /* -------------------------
+     Render sessions
+     ------------------------- */
+  function renderSessions(filter = {}) {
+    const tbody = document.getElementById('sessionTable');
+    tbody.innerHTML = '';
+    let rows = state.sessions.slice().reverse();
+    if(filter.text) rows = rows.filter(s => s.title.toLowerCase().includes(filter.text.toLowerCase()) || (s.tags||[]).join(',').toLowerCase().includes(filter.text.toLowerCase()));
+    if(filter.tag) rows = rows.filter(s => (s.tags||[]).includes(filter.tag));
+    if(filter.from) rows = rows.filter(s => new Date(s.date) >= new Date(filter.from));
+    if(filter.to) rows = rows.filter(s => new Date(s.date) <= new Date(filter.to + 'T23:59:59'));
+    rows.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(s.title)}</td><td>${(s.tags||[]).map(t=>`<span class="badge">${escapeHtml(t)}</span>`).join(' ')}</td><td>${s.minutes}</td><td>${new Date(s.date).toLocaleString()}</td>
+        <td>
+          <button class="small" data-id="${s.id}" data-action="edit">Edit</button>
+          <button class="small btn-ghost" data-id="${s.id}" data-action="delete">Delete</button>
+          <button class="small btn-ghost" data-id="${s.id}" data-action="sync">Sync</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('button').forEach(btn => btn.addEventListener('click', (e) => {
+      const id = btn.dataset.id, action = btn.dataset.action;
+      if(action === 'edit') openEditSession(id);
+      if(action === 'delete') deleteSession(id);
+      if(action === 'sync') syncSessionPlaceholder(id);
+    }));
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  /* -------------------------
+     Session CRUD
+     ------------------------- */
+  function addSession(title, tags, minutes){
+    const entry = { id: uid(), title, tags, minutes, date: new Date().toISOString(), synced:false };
+    state.sessions.push(entry);
+    state.weekData[getTodayIndex()] = (state.weekData[getTodayIndex()]||0) + minutes;
+    updateStreakOnAdd();
+    saveState(); updateAll();
+    // push to server if configured (Firebase)
+    if(window.firebase && window.firebase.apps && window.firebase.apps.length) pushSessionToFirestore(entry).catch(()=>{});
+  }
+
+  function openEditSession(id){
+    const s = state.sessions.find(x => x.id === id);
+    if(!s) return alert('Session not found');
+    const newTitle = prompt('Edit title', s.title);
+    if(newTitle === null) return;
+    const newTags = prompt('Edit tags (comma separated)', (s.tags||[]).join(','));
+    const newMinutes = prompt('Edit minutes', s.minutes);
+    if(newMinutes === null) return;
+    const diff = parseInt(newMinutes) - s.minutes;
+    s.title = newTitle;
+    s.tags = newTags ? newTags.split(',').map(t=>t.trim()).filter(Boolean) : [];
+    s.minutes = parseInt(newMinutes);
+    state.weekData[getTodayIndex()] = Math.max(0, (state.weekData[getTodayIndex()]||0) + diff);
+    saveState(); updateAll();
+  }
+
+  function deleteSession(id){
+    if(!confirm('Delete this session?')) return;
+    const idx = state.sessions.findIndex(x => x.id === id);
+    if(idx === -1) return;
+    const s = state.sessions[idx];
+    state.weekData[getTodayIndex()] = Math.max(0, (state.weekData[getTodayIndex()]||0) - s.minutes);
+    state.sessions.splice(idx,1);
+    saveState(); updateAll();
+  }
+
+  /* -------------------------
+     Filters
+     ------------------------- */
+  document.getElementById('applyFilter').addEventListener('click', () => {
+    const text = document.getElementById('filterText').value;
+    const tag = document.getElementById('filterTag').value;
+    const from = document.getElementById('filterFrom').value;
+    const to = document.getElementById('filterTo').value;
+    renderSessions({ text, tag, from: from ? new Date(from) : null, to: to ? new Date(to + 'T23:59:59') : null });
+  });
+  document.getElementById('clearFilter').addEventListener('click', () => {
+    document.getElementById('filterText').value = '';
+    document.getElementById('filterTag').value = '';
+    document.getElementById('filterFrom').value = '';
+    document.getElementById('filterTo').value = '';
+    renderSessions();
+  });
+
+  /* -------------------------
+     Quick log
+     ------------------------- */
+  document.getElementById('quickLog5').addEventListener('click', () => addSession('Quick 5m', [], 5));
+  document.getElementById('quickLog15').addEventListener('click', () => addSession('Quick 15m', [], 15));
+
+  /* -------------------------
+     Goal & progress UI
+     ------------------------- */
+  document.getElementById('goalSlider').value = state.goal;
+  document.getElementById('goalLabel').textContent = state.goal + ' mins';
+  document.getElementById('goalSlider').addEventListener('input', e => {
+    state.goal = parseInt(e.target.value); document.getElementById('goalLabel').textContent = state.goal + ' mins'; saveState(); updateAll();
+  });
+
+  function updateProgressUI(){
+    const used = state.weekData[getTodayIndex()] || 0;
+    const pct = Math.min(100, Math.round((used / state.goal) * 100));
+    const ring = document.getElementById('progressRing');
+    ring.textContent = pct + '%';
+    ring.style.background = `conic-gradient(rgba(6,182,212,0.95) 0% ${pct}%, rgba(255,255,255,0.06) ${pct}% 100%)`;
+    document.getElementById('progressMeta').textContent = `${used} / ${state.goal} mins`;
+    document.getElementById('todayUsage').textContent = `${Math.floor(used/60)}h ${used%60}m`;
+  }
+
+  /* -------------------------
+     Pomodoro engine
+     ------------------------- */
+  let timer = { seconds:0, phase:'stopped', intervalId:null, currentTitle:'' };
+
+  function renderTimer(){
+    const m = Math.floor(timer.seconds/60);
+    const s = timer.seconds%60;
+    document.getElementById('timerDisplay').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    document.getElementById('timerPhase').textContent = timer.phase === 'focus' ? 'Focus' : (timer.phase === 'break' ? 'Break' : 'Stopped');
+  }
+
+  function startPhase(mins, type, title){
+    timer.phase = type;
+    timer.currentTitle = title || 'Untitled';
+    timer.seconds = mins * 60;
+    renderTimer();
+    if(timer.intervalId) clearInterval(timer.intervalId);
+    timer.intervalId = setInterval(() => {
+      if(timer.seconds > 0){ timer.seconds--; renderTimer(); }
+      else {
+        clearInterval(timer.intervalId); timer.intervalId = null;
+        if(type === 'focus'){
+          addSession(timer.currentTitle, parseTags(document.getElementById('sessionTags').value), mins);
+          notify(`Focus block complete: ${timer.currentTitle} (${mins}m)`);
+          const breakM = parseInt(document.getElementById('breakMinutes').value) || state.settings.defaultBreak;
+          startPhase(breakM, 'break', timer.currentTitle);
+        } else {
+          notify('Break finished — starting next focus');
+          const focusM = parseInt(document.getElementById('focusMinutes').value) || state.settings.defaultFocus;
+          const title = document.getElementById('sessionTitle').value || timer.currentTitle || 'Untitled';
+          startPhase(focusM, 'focus', title);
+        }
+      }
+    }, 1000);
+    startAmbientForPhase(type);
+  }
+
+  document.getElementById('startCycle').addEventListener('click', () => {
+    const preset = document.getElementById('cyclePreset').value;
+    if(preset === 'classic'){ document.getElementById('focusMinutes').value = 25; document.getElementById('breakMinutes').value = 5; }
+    if(preset === 'short'){ document.getElementById('focusMinutes').value = 15; document.getElementById('breakMinutes').value = 3; }
+    if(preset === 'long'){ document.getElementById('focusMinutes').value = 50; document.getElementById('breakMinutes').value = 10; }
+    const focusM = parseInt(document.getElementById('focusMinutes').value) || state.settings.defaultFocus;
+    const title = document.getElementById('sessionTitle').value || 'Untitled';
+    startPhase(focusM, 'focus', title);
+  });
+  document.getElementById('pauseCycle').addEventListener('click', () => { if(timer.intervalId){ clearInterval(timer.intervalId); timer.intervalId = null; notify('Timer paused'); } });
+  document.getElementById('stopCycle').addEventListener('click', () => { if(timer.intervalId){ clearInterval(timer.intervalId); timer.intervalId = null; } timer.phase='stopped'; timer.seconds=0; timer.currentTitle=''; renderTimer(); stopAmbient(); notify('Timer stopped'); });
+  document.getElementById('skipToBreak').addEventListener('click', () => {
+    if(timer.phase === 'focus'){
+      if(timer.intervalId) clearInterval(timer.intervalId);
+      const elapsed = (parseInt(document.getElementById('focusMinutes').value) * 60) - timer.seconds;
+      const mins = Math.max(1, Math.round(elapsed / 60));
+      if(mins > 0) addSession(timer.currentTitle || document.getElementById('sessionTitle').value || 'Untitled', parseTags(document.getElementById('sessionTags').value), mins);
+      const breakM = parseInt(document.getElementById('breakMinutes').value) || state.settings.defaultBreak;
+      startPhase(breakM, 'break', timer.currentTitle);
+    }
+  });
+
+  window.addEventListener('blur', () => { if(document.getElementById('autoPause').checked && timer.intervalId) { clearInterval(timer.intervalId); timer.intervalId = null; notify('Auto-paused on blur'); } });
+  window.addEventListener('keydown', (e) => { if(e.code === 'Space'){ e.preventDefault(); if(timer.intervalId) { clearInterval(timer.intervalId); timer.intervalId = null; } else { const focusM = parseInt(document.getElementById('focusMinutes').value) || state.settings.defaultFocus; startPhase(focusM, 'focus', document.getElementById('sessionTitle').value || 'Untitled'); } } if(e.key.toLowerCase() === 's'){ if(timer.intervalId) clearInterval(timer.intervalId); timer.phase='stopped'; timer.seconds=0; timer.currentTitle=''; renderTimer(); } });
+
+  /* -------------------------
+     Ambient audio
+     ------------------------- */
+  const ambientSources = { rain:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', waves:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', focus:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' };
+  const audioA = new Audio(); const audioB = new Audio();
+  audioA.loop = audioB.loop = true;
+  let activeAudio = audioA, standbyAudio = audioB, ambientPlaying = false;
+  document.getElementById('ambientSelect').addEventListener('change', (e) => { if(e.target.value === 'upload') document.getElementById('ambientUpload').click(); });
+  document.getElementById('ambientUpload').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if(!f) return; const url = URL.createObjectURL(f); localStorage.setItem('dw_ambient_upload', url); activeAudio.src = url; activeAudio.play().catch(()=>{}); ambientPlaying = true; });
+  document.getElementById('playAmbient').addEventListener('click', () => {
+    const sel = document.getElementById('ambientSelect').value || 'focus';
+    const url = sel === 'upload' ? (localStorage.getItem('dw_ambient_upload') || '') : ambientSources[sel];
+    if(!url) return alert('No ambient selected');
+    activeAudio.src = url; activeAudio.loop = true; activeAudio.volume = parseFloat(document.getElementById('ambientVolume').value || 0.6); activeAudio.play().catch(()=>{}); ambientPlaying = true;
+  });
+  document.getElementById('pauseAmbient').addEventListener('click', () => { activeAudio.pause(); ambientPlaying = false; });
+  document.getElementById('ambientVolume').addEventListener('input', (e) => { activeAudio.volume = parseFloat(e.target.value); standbyAudio.volume = parseFloat(e.target.value); });
+
+  function startAmbientForPhase(phase){
+    const sel = document.getElementById('ambientSelect').value || 'focus';
+    const url = sel === 'upload' ? (localStorage.getItem('dw_ambient_upload') || '') : ambientSources[sel];
+    if(!url) return;
+    if(!ambientPlaying){ activeAudio.src = url; activeAudio.loop = true; activeAudio.volume = parseFloat(document.getElementById('ambientVolume').value || 0.6); activeAudio.play().catch(()=>{}); ambientPlaying = true; }
+    else {
+      // simple crossfade
+      standbyAudio.src = url; standbyAudio.loop = true; standbyAudio.volume = 0; standbyAudio.play().catch(()=>{});
+      crossfade(activeAudio, standbyAudio, 1500);
+    }
+  }
+  function crossfade(from, to, ms){
+    const steps = 20; const step = ms/steps; let i = 0; to.volume = 0; const targetVol = parseFloat(document.getElementById('ambientVolume').value || 0.6);
+    const iv = setInterval(()=>{ i++; to.volume = (i/steps)*targetVol; from.volume = (1 - i/steps)*targetVol; if(i>=steps){ clearInterval(iv); from.pause(); const tmp = activeAudio; activeAudio = to; standbyAudio = tmp; } }, step);
+  }
+  function stopAmbient(){ activeAudio.pause(); standbyAudio.pause(); ambientPlaying = false; }
+
+  /* -------------------------
+     Voice control & notes
+     ------------------------- */
+  let recognition = null;
+  if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = false; recognition.interimResults = false;
+    recognition.onresult = (e) => { const text = e.results[0][0].transcript; handleVoiceCommand(text); };
+  }
+  function handleVoiceCommand(text){
+    const t = text.toLowerCase();
+    if(t.includes('start')) { const m = parseInt(document.getElementById('focusMinutes').value)||25; startPhase(m,'focus',document.getElementById('sessionTitle').value||'Voice session'); notify('Voice: started focus'); }
+    else if(t.includes('stop')) { if(timer.intervalId) clearInterval(timer.intervalId); timer.phase='stopped'; timer.seconds=0; renderTimer(); notify('Voice: stopped'); }
+    else if(t.match(/log (\d+)/)) { const mins = parseInt(t.match(/log (\d+)/)[1]); addSession('Voice log', [], mins); notify('Voice: logged '+mins+' mins'); }
+    else { console.log('Voice heard:', text); }
+  }
+  document.getElementById('startVoice')?.addEventListener('click', ()=> { if(!recognition) return alert('SpeechRecognition not supported'); recognition.start(); });
+
+  // Voice note recording
+  let mediaRecorder = null; let recordedChunks = [];
+  document.getElementById('recordNote')?.addEventListener('click', async () => {
+    if(!mediaRecorder){
+      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type:'audio/webm' }); recordedChunks = [];
+        const url = URL.createObjectURL(blob);
+        const last = state.sessions[state.sessions.length-1];
+        if(last){ last.voiceNote = url; saveState(); updateAll(); alert('Voice note attached to last session'); }
+        else { const s = { id:uid(), title:'Voice note', tags:[], minutes:0, date:new Date().toISOString(), voiceNote:url }; state.sessions.push(s); saveState(); updateAll(); alert('Voice note saved'); }
+      };
+      mediaRecorder.start(); alert('Recording... click again to stop');
+    } else { mediaRecorder.stop(); mediaRecorder = null; }
+  });
+
+  /* -------------------------
+     Smart suggestions & adaptive goals
+     ------------------------- */
+  function computeSuggestions(){
+    const sessions = state.sessions;
+    if(!sessions.length) return { title:'Try a 25m focus', minutes:25, reason:'No sessions yet' };
+    const mins = sessions.map(s=>s.minutes).sort((a,b)=>a-b);
+    const median = mins[Math.floor(mins.length/2)] || 25;
+    const hourCounts = {};
+    sessions.forEach(s => { const h = new Date(s.date).getHours(); hourCounts[h] = (hourCounts[h]||0)+1; });
+    const bestHour = Object.keys(hourCounts).reduce((a,b)=> hourCounts[a]>hourCounts[b]?a:b, Object.keys(hourCounts)[0]);
+    return { title:`Suggested ${median}m session`, minutes: median, reason:`You often work around ${bestHour}:00` };
+  }
+  function showSuggestion(){ const s = computeSuggestions(); document.getElementById('suggestionCard').textContent = `${s.title} — ${s.reason}`; document.getElementById('applySuggestion').onclick = ()=> { document.getElementById('focusMinutes').value = s.minutes; document.getElementById('sessionTitle').value = s.title; }; }
+  showSuggestion();
+
+  function computeAdaptiveGoal(){
+    const total = state.weekData.reduce((a,b)=>a+b,0);
+    const avg = Math.round(total/7);
+    if(avg > state.goal * 1.2) return Math.round(state.goal * 1.1);
+    if(avg < state.goal * 0.7) return Math.max(60, Math.round(state.goal * 0.9));
+    return state.goal;
+  }
+  function showAdaptiveGoal(){ const suggested = computeAdaptiveGoal(); if(suggested !== state.goal){ const el = document.getElementById('analytics'); el.innerHTML += `<div class="muted">Adaptive goal suggestion: ${suggested} mins <button id="applyAdaptive" class="small">Apply</button></div>`; document.getElementById('applyAdaptive').onclick = ()=> { state.goal = suggested; document.getElementById('goalSlider').value = suggested; document.getElementById('goalLabel').textContent = suggested + ' mins'; saveState(); updateAll(); }; } }
+
+  /* -------------------------
+     Heatmap (simple)
+     ------------------------- */
+  function renderHeatmap(){
+    const canvas = document.getElementById('heatmap');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.clientWidth;
+    canvas.height = 120;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const days = 30; const cols = 7; const cellW = canvas.width / cols; const cellH = canvas.height / 5;
+    for(let d=0; d<days; d++){
+      const x = (d % cols) * cellW; const y = Math.floor(d/cols) * cellH;
+      const minutes = Math.floor(Math.random()*120);
+      const intensity = Math.min(1, minutes/120);
+      ctx.fillStyle = `rgba(6,182,212,${0.08 + 0.7*intensity})`;
+      ctx.fillRect(x+2,y+2,cellW-4,cellH-4);
+    }
+  }
+
+  /* -------------------------
+     Templates & macros (simple)
+     ------------------------- */
+  function saveTemplate(){
+    const title = document.getElementById('sessionTitle').value || 'Untitled';
+    const tags = parseTags(document.getElementById('sessionTags').value);
+    const focus = parseInt(document.getElementById('focusMinutes').value) || 25;
+    state.templates.push({ id:uid(), title, tags, focus });
+    saveState(); alert('Template saved');
+  }
+  const macros = {};
+  function runMacro(name){ const m = macros[name]; if(!m) return; if(m.startFocus) startPhase(m.minutes || 25, 'focus', m.title || 'Macro'); if(m.ambient) { document.getElementById('ambientSelect').value = m.ambient; startAmbientForPhase('focus'); } }
+
+  /* -------------------------
+     Streaks & badges
+     ------------------------- */
+  function updateStreakOnAdd(){
+    const today = new Date().toISOString().slice(0,10);
+    const last = state.lastActiveDate;
+    if(last === today) return;
+    const prevIndex = (getTodayIndex() + 6) % 7;
+    if(state.weekData[prevIndex] >= state.goal) state.streak = (state.streak || 0) + 1;
+    else state.streak = 0;
+    state.lastActiveDate = today;
+  }
+  function renderBadges(){
+    const total = state.sessions.reduce((s,e)=>s+e.minutes,0);
+    state.badges = [];
+    if(total >= 100) state.badges.push('100-mins');
+    if(total >= 500) state.badges.push('500-mins');
+    if(state.streak >= 3) state.badges.push('3-day-streak');
+    const area = document.getElementById('badgesArea'); if(area) area.innerHTML = state.badges.map(b => `<span class="badge">${b}</span>`).join(' ');
+  }
+
+  /* -------------------------
+     Notifications & quiet hours
+     ------------------------- */
+  function isQuietNow(){
+    const qFrom = state.settings.quietFrom; const qTo = state.settings.quietTo;
+    if(!qFrom || !qTo) return false;
+    const now = new Date(); const [fh,fm] = qFrom.split(':').map(Number); const [th,tm] = qTo.split(':').map(Number);
+    const from = new Date(); from.setHours(fh,fm,0,0); const to = new Date(); to.setHours(th,tm,0,0);
+    if(from <= to) return now >= from && now <= to;
+    return now >= from || now <= to;
+  }
+  function notify(msg){
+    if(isQuietNow()) return;
+    if("Notification" in window && Notification.permission === "granted") new Notification(msg);
+    else console.log('Notify:', msg);
+    if(document.getElementById('duckOnNotify')?.checked) duckAmbient();
+  }
+  if("Notification" in window && Notification.permission !== "granted") Notification.requestPermission().catch(()=>{});
+
+  function duckAmbient(){ if(activeAudio && !activeAudio.paused){ const orig = activeAudio.volume; activeAudio.volume = Math.max(0.05, orig * 0.3); setTimeout(()=> activeAudio.volume = orig, 2000); } }
+
+  /* -------------------------
+     Export CSV/JSON
+     ------------------------- */
+  function exportCSV(range = {}, tagFilter = '') {
+    const rows = [['Title','Tags','Minutes','Date'], ...state.sessions.map(s => [s.title,(s.tags||[]).join(';'),s.minutes,s.date])];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `dw_sessions_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  }
+  function exportJSON(){ const blob = new Blob([JSON.stringify(state.sessions,null,2)], { type:'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `dw_sessions_${new Date().toISOString().slice(0,10)}.json`; a.click(); }
+
+  document.getElementById('exportCSV').addEventListener('click', () => exportCSV());
+  document.getElementById('exportJSON').addEventListener('click', () => exportJSON());
+  document.getElementById('scheduledExport').addEventListener('click', () => { alert('Scheduled export placeholder — will trigger export in 10s'); setTimeout(exportCSV,10000); });
+
+  /* -------------------------
+     Firebase integration (optional)
+     ------------------------- */
+  async function initFirebaseIfConfigured(){
+    if(!FIREBASE_CONFIG) return;
+    try{
+      firebase.initializeApp(FIREBASE_CONFIG);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      document.getElementById('authorizeGoogle').addEventListener('click', () => { /* reuse for Google */ });
+      document.getElementById('connectFirebase').addEventListener('click', async () => {
+        // Sign in with Google
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try{
+          const res = await auth.signInWithPopup(provider);
+          document.getElementById('status').textContent = 'Firebase signed in: ' + res.user.email;
+          // start listeners
+          db.collection('sessions').where('owner','==', res.user.uid).onSnapshot(snapshot => {
+            snapshot.docChanges().forEach(change => {
+              const data = change.doc.data();
+              if(change.type === 'added' || change.type === 'modified'){
+                const idx = state.sessions.findIndex(s => s.id === data.id);
+                const sessionObj = { id: data.id, title: data.title, tags: data.tags || [], minutes: data.minutes, date: data.date, synced: true };
+                if(idx === -1) state.sessions.push(sessionObj); else state.sessions[idx] = sessionObj;
+              } else if(change.type === 'removed'){
+                const idx = state.sessions.findIndex(s => s.id === data.id);
+                if(idx !== -1) state.sessions.splice(idx,1);
+              }
+            });
+            saveState(); updateAll();
+          });
+          // weekData doc
+          db.collection('meta').doc('weekData').onSnapshot(doc => {
+            if(doc.exists){ const d = doc.data(); if(d.weekData) { state.weekData = d.weekData; saveState(); updateAll(); } }
+          });
+        }catch(err){ console.error('Firebase sign-in error', err); alert('Firebase sign-in failed'); }
+      });
+    }catch(e){ console.warn('Firebase init error', e); }
+  }
+  // push session to Firestore if configured
+  async function pushSessionToFirestore(session){
+    if(!FIREBASE_CONFIG) return;
+    try{
+      const db = firebase.firestore();
+      await db.collection('sessions').doc(session.id).set({ ...session, owner: firebase.auth().currentUser.uid, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      const s = state.sessions.find(x=>x.id===session.id); if(s) s.synced = true; saveState(); updateAll();
+    }catch(e){ console.error('pushSessionToFirestore error', e); }
+  }
+
+  /* -------------------------
+     Google Calendar integration (optional)
+     ------------------------- */
+  let gapiInited = false;
+  let googleAuthInstance = null;
+  function initGapiIfConfigured(){
+    if(!GOOGLE_CLIENT_ID || !GOOGLE_API_KEY) return;
+    if(window.gapi){
+      gapi.load('client:auth2', async () => {
+        try{
+          await gapi.client.init({
+            apiKey: GOOGLE_API_KEY,
+            clientId: GOOGLE_CLIENT_ID,
+            discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"],
+            scope: "https://www.googleapis.com/auth/calendar.events"
+          });
+          googleAuthInstance = gapi.auth2.getAuthInstance();
+          gapiInited = true;
+          document.getElementById('status').textContent = (document.getElementById('status').textContent || '') + ' · Google API ready';
+        }catch(err){ console.error('gapi init error', err); }
+      });
+    }
+  }
+  document.getElementById('authorizeGoogle').addEventListener('click', async () => {
+    if(!gapiInited) return alert('Google API not initialized; set GOOGLE_CLIENT_ID and GOOGLE_API_KEY in the file.');
+    try{ await googleAuthInstance.signIn(); alert('Google signed in'); } catch(e){ console.error(e); alert('Google sign-in failed'); }
+  });
+  async function createCalendarEvent(session){
+    if(!gapiInited) return alert('Google API not initialized');
+    if(!googleAuthInstance.isSignedIn.get()) return alert('Please sign in to Google first');
+    const start = new Date(); const end = new Date(start.getTime() + session.minutes * 60000);
+    const event = { summary: session.title, description: `Logged by Digital Wellness (${session.minutes} minutes)`, start:{ dateTime: start.toISOString() }, end:{ dateTime: end.toISOString() } };
+    try{
+      const request = gapi.client.calendar.events.insert({ calendarId: 'primary', resource: event });
+      const response = await request;
+      const s = state.sessions.find(x=>x.id===session.id); if(s) s.synced = true; saveState(); updateAll();
+      alert('Event created in Google Calendar');
+      return response.result;
+    }catch(err){ console.error('createCalendarEvent error', err); alert('Failed to create calendar event'); return null; }
+  }
+
+  /* -------------------------
+     Webhook send
+     ------------------------- */
+  document.getElementById('sendWebhook').addEventListener('click', async () => {
+    const url = document.getElementById('webhookUrl').value;
+    if(!url) return alert('Enter webhook URL');
+    const last = state.sessions[state.sessions.length-1];
+    if(!last) return alert('No sessions to send');
+    try{ const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(last) }); alert('Webhook sent, status ' + res.status); } catch(e){ alert('Webhook error: ' + e.message); }
+  });
+
+  /* -------------------------
+     Misc helpers & startup
+     ------------------------- */
+  function parseTags(text){ if(!text) return []; return text.split(',').map(t=>t.trim()).filter(Boolean); }
+  function updateAll(){ renderSessions(); updateCharts(); updateProgressUI(); populateFilterTags(); computeAnalytics(); renderHeatmap(); showSuggestion(); renderBadges(); saveState(); }
+  function populateFilterTags(){ const set = new Set(); state.sessions.forEach(s => (s.tags||[]).forEach(t => set.add(t))); const sel = document.getElementById('filterTag'); const prev = sel.value; sel.innerHTML = '<option value="">All tags</option>' + Array.from(set).map(t => `<option value="${t}">${t}</option>`).join(''); sel.value = prev; }
+  function computeAnalytics(){ const total = state.weekData.reduce((a,b)=>a+b,0); const avg = Math.round(total/7); const best = Math.max(...state.weekData); const bestDay = dayNames[state.weekData.indexOf(best)]; document.getElementById('analytics').innerHTML = `<strong>Weekly avg:</strong> ${avg} mins · <strong>Best day:</strong> ${bestDay} (${best} mins)`; showAdaptiveGoal(); }
+  function renderHeatmap(){ const canvas = document.getElementById('heatmap'); if(!canvas) return; const ctx = canvas.getContext('2d'); canvas.width = canvas.clientWidth; canvas.height = 120; ctx.clearRect(0,0,canvas.width,canvas.height); const days = 30; const cols = 7; const cellW = canvas.width / cols; const cellH = canvas.height / 5; for(let d=0; d<days; d++){ const x = (d % cols) * cellW; const y = Math.floor(d/cols) * cellH; const minutes = Math.floor(Math.random()*120); const intensity = Math.min(1, minutes/120); ctx.fillStyle = `rgba(6,182,212,${0.08 + 0.7*intensity})`; ctx.fillRect(x+2,y+2,cellW-4,cellH-4); } }
+
+  // Bind quick UI actions
+  document.getElementById('applySuggestion').addEventListener('click', () => { const s = computeSuggestions(); document.getElementById('focusMinutes').value = s.minutes; document.getElementById('sessionTitle').value = s.title; });
+  document.getElementById('exportAll').addEventListener('click', () => exportJSON());
+  document.getElementById('deleteAll').addEventListener('click', () => { if(confirm('Delete all local data?')) { localStorage.removeItem(KEY); location.reload(); } });
+
+  // initial UI
+  updateAll();
+  renderHeatmap();
+
+  // initialize optional integrations if credentials present
+  if(FIREBASE_CONFIG) initFirebaseIfConfigured();
+  if(GOOGLE_CLIENT_ID && GOOGLE_API_KEY) initGapiIfConfigured();
+
+  // Expose for debugging
+  window.dw = { state, addSession, updateAll, exportCSV, exportJSON };
+
+  /* -------------------------
+     Placeholder functions for server push (used if Firebase configured)
+     ------------------------- */
+  async function initFirebaseIfConfigured(){
+    if(!FIREBASE_CONFIG) return;
+    try{
+      firebase.initializeApp(FIREBASE_CONFIG);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      document.getElementById('connectFirebase').addEventListener('click', async () => {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try{
+          const res = await auth.signInWithPopup(provider);
+          document.getElementById('status').textContent = 'Firebase signed in: ' + res.user.email;
+          // start listeners
+          db.collection('sessions').where('owner','==', res.user.uid).onSnapshot(snapshot => {
+            snapshot.docChanges().forEach(change => {
+              const data = change.doc.data();
+              if(change.type === 'added' || change.type === 'modified'){
+                const idx = state.sessions.findIndex(s => s.id === data.id);
+                const sessionObj = { id: data.id, title: data.title, tags: data.tags || [], minutes: data.minutes, date: data.date, synced: true };
+                if(idx === -1) state.sessions.push(sessionObj); else state.sessions[idx] = sessionObj;
+              } else if(change.type === 'removed'){
+                const idx = state.sessions.findIndex(s => s.id === data.id);
+                if(idx !== -1) state.sessions.splice(idx,1);
+              }
+            });
+            saveState(); updateAll();
+          });
+          db.collection('meta').doc('weekData').onSnapshot(doc => {
+            if(doc.exists){ const d = doc.data(); if(d.weekData){ state.weekData = d.weekData; saveState(); updateAll(); } }
+          });
+        }catch(err){ console.error('Firebase sign-in error', err); alert('Firebase sign-in failed'); }
+      });
+    }catch(e){ console.warn('Firebase init error', e); }
+  }
+
+  async function pushSessionToFirestore(session){
+    if(!FIREBASE_CONFIG) return;
+    try{
+      const db = firebase.firestore();
+      const user = firebase.auth().currentUser;
+      if(!user) return;
+      await db.collection('sessions').doc(session.id).set({ ...session, owner: user.uid, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      const s = state.sessions.find(x=>x.id===session.id); if(s) s.synced = true; saveState(); updateAll();
+    }catch(e){ console.error('pushSessionToFirestore error', e); }
+  }
+
+  async function initGapiIfConfigured(){
+    if(!GOOGLE_CLIENT_ID || !GOOGLE_API_KEY) return;
+    if(window.gapi){
+      gapi.load('client:auth2', async () => {
+        try{
+          await gapi.client.init({
+            apiKey: GOOGLE_API_KEY,
+            clientId: GOOGLE_CLIENT_ID,
+            discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"],
+            scope: "https://www.googleapis.com/auth/calendar.events"
+          });
+          googleAuthInstance = gapi.auth2.getAuthInstance();
+          gapiInited = true;
+          document.getElementById('status').textContent = (document.getElementById('status').textContent || '') + ' · Google API ready';
+        }catch(err){ console.error('gapi init error', err); }
+      });
+    }
+  }
+
+  function syncSessionPlaceholder(id){
+    const s = state.sessions.find(x=>x.id===id);
+    if(!s) return alert('Session not found');
+    if(!gapiInited) return alert('Google Calendar not configured; set GOOGLE_CLIENT_ID and GOOGLE_API_KEY in the file to enable sync.');
+    if(!googleAuthInstance.isSignedIn.get()) return alert('Please sign in to Google first');
+    createCalendarEvent(s);
+  }
+
+  async function createCalendarEvent(session){
+    if(!gapiInited) return alert('Google API not initialized');
+    const start = new Date(); const end = new Date(start.getTime() + session.minutes * 60000);
+    const event = { summary: session.title, description: `Logged by Digital Wellness (${session.minutes} minutes)`, start:{ dateTime: start.toISOString() }, end:{ dateTime: end.toISOString() } };
+    try{
+      const request = gapi.client.calendar.events.insert({ calendarId: 'primary', resource: event });
+      const response = await request;
+      const s = state.sessions.find(x=>x.id===session.id); if(s) s.synced = true; saveState(); updateAll();
+      alert('Event created in Google Calendar');
+      return response.result;
+    }catch(err){ console.error('createCalendarEvent error', err); alert('Failed to create calendar event'); return null; }
+  }
+
+  </script>
+</body>
+</html>

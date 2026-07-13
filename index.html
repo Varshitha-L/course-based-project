@@ -194,7 +194,7 @@
       renderDayChart(labels, durations);
     };
 
-    // Refresh sessions list
+  
     document.getElementById('refreshSessions').onclick = async () => {
       const day = document.getElementById('day').value;
       const sessions = await api('/api/sessions' + (day ? ('?day=' + day) : ''));
